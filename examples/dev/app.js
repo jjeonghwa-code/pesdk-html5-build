@@ -12,7 +12,7 @@ window.addEventListener('load', function () {
             controlsOptions: {
               library: {
                 provider: LibraryProvider
-              },
+              }
             }
           },
           photoRoll: {
@@ -20,17 +20,6 @@ window.addEventListener('load', function () {
           }
         }
       )
-      // options.crossOrigin = 'none'
-      options.assets.baseUrl = 'https://pesdk-html5-cors-eg.s3.eu-central-1.amazonaws.com/assets'
-      options.editor.controlsOptions.overlay = {}
-      options.editor.controlsOptions.overlay.overlays = [{
-        identifier: 'imgly_overlay_golden',
-        defaultName: 'Golden',
-        image: 'overlays/imgly_overlay_golden.jpg',
-        thumbnail: 'overlays/imgly_overlay_golden_thumb.jpg',
-        blendMode: 'lighten'
-      }]
-      options.editor.controlsOptions.overlay.replaceOverlays = true
       window.editor = (function () {
         switch (options.ui.type) {
           case 'reactui': return new PhotoEditorSDK.UI.ReactUI(options)
