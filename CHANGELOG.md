@@ -1,3 +1,53 @@
+# 5.0.0-rc-3
+
+## Changed
+*   [[PESDK-5463](https://imglysdk.atlassian.net/browse/PESDK-5463)] - Changed button API
+*   [[PESDK-5405](https://imglysdk.atlassian.net/browse/PESDK-5405)] - Changed PhotoEditor SDK init API
+
+## Added
+
+*   [[PESDK-5378](https://imglysdk.atlassian.net/browse/PESDK-5378)] - Implemented the release candidate in different environments
+*   [[PESDK-5394](https://imglysdk.atlassian.net/browse/PESDK-5394)] - Improved the export button in the canvas bar
+*   [[PESDK-5400](https://imglysdk.atlassian.net/browse/PESDK-5400)] - Try building Angular and Vue Wrappers
+*   [[PESDK-5405](https://imglysdk.atlassian.net/browse/PESDK-5405)] - Updated docs
+*   [[PESDK-5424](https://imglysdk.atlassian.net/browse/PESDK-5424)] - Styled category and items without flex
+*   [[PESDK-5425](https://imglysdk.atlassian.net/browse/PESDK-5425)] - Added PESDKUI types for api
+*   [[PESDK-5426](https://imglysdk.atlassian.net/browse/PESDK-5426)] - Added warning modal before close
+*   [[PESDK-5427](https://imglysdk.atlassian.net/browse/PESDK-5427)] - Added the measurements to the configuration
+*   [[PESDK-5433](https://imglysdk.atlassian.net/browse/PESDK-5433)] - Added disabled opacity different component
+
+## Fixed
+
+*   [[PESDK-5315](https://imglysdk.atlassian.net/browse/PESDK-5315)] - Fixed crop controls not being touchable
+*   [[PESDK-5345](https://imglysdk.atlassian.net/browse/PESDK-5345)] - Fixing Library categories are missing and search function is not working in IE
+*   [[PESDK-5351](https://imglysdk.atlassian.net/browse/PESDK-5351)] - Fixing Blend mode label missing in Overlay in IE 11
+*   [[PESDK-5429](https://imglysdk.atlassian.net/browse/PESDK-5429)] - Fixed focus tool overlapping toolbar
+*   [[PESDK-5430](https://imglysdk.atlassian.net/browse/PESDK-5430)] - Fixed font size label disabled state, when a text is not selected
+*   [[PESDK-5431](https://imglysdk.atlassian.net/browse/PESDK-5431)] - Fixed slider width in ie11
+*   [[PESDK-5432](https://imglysdk.atlassian.net/browse/PESDK-5432)] - Fixed snapping overlap in basic ui
+*   [[PESDK-5434](https://imglysdk.atlassian.net/browse/PESDK-5434)] - Fixed Safari button clicks one after the other
+*   [[PESDK-5436](https://imglysdk.atlassian.net/browse/PESDK-5436)] - Fixed sliders don't reach 0 for LUT filter and Overlay
+*   [[PESDK-5437](https://imglysdk.atlassian.net/browse/PESDK-5437)] - Fixed tooltip behind cards when category is open in IE-11
+*   [[PESDK-5439](https://imglysdk.atlassian.net/browse/PESDK-5439)] - Fixed text size on duplication
+*   [[PESDK-5443](https://imglysdk.atlassian.net/browse/PESDK-5443)] - Fixed brush cursor indicator, when cursor moved out of canvas
+*   [[PESDK-5445](https://imglysdk.atlassian.net/browse/PESDK-5445)] - Fixed slider input for NAN values
+*   [[PESDK-5451](https://imglysdk.atlassian.net/browse/PESDK-5451)] - Removed the background from disabled buttons
+*   [[PESDK-5455](https://imglysdk.atlassian.net/browse/PESDK-5455)] - Fixed the focus tool issue on mobile
+*   [[PESDK-5456](https://imglysdk.atlassian.net/browse/PESDK-5456)] - Fixed the icon buttons in the toolbar on mobile
+*   [[PESDK-5435](https://imglysdk.atlassian.net/browse/PESDK-5435)] - Fixed transform crop mask animation on safari
+
+# 5.0.0-rc-2
+*   Changed UI configuration
+*   Improved User Experience
+*   Added UI Themes
+*   Added Custom Components
+
+# 4.22.3
+
+## Fixed
+
+*   [[PESDK-5229](https://imglysdk.atlassian.net/browse/PESDK-5229)] - Fixed pesdk server memory leak
+
 # 4.22.2
 
 ## Fixed

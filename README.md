@@ -19,7 +19,7 @@ Visit [our website](https://www.photoeditorsdk.com) for tutorials on how to inte
 
 
 ## Documentation
-Visit our [docs](https://docs.photoeditorsdk.com)
+Visit our [docs](https://docs.photoeditorsdk.com/guides/html5/v5_rc_3/introduction/getting_started)
 
 ## Examples
 Visit our [website](https://www.photoeditorsdk.com/).

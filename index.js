@@ -1,5 +1,5 @@
 if (process.env.NODE_ENV === 'production') {
-  module.exports = require('./js/PhotoEditorSDK.min')
+  module.exports = require('./cjs/production/index.js')
 } else {
-  module.exports = require('./js/PhotoEditorSDK')
+  module.exports = require('./cjs/development/index.js')
 }
