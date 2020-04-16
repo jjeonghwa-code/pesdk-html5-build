@@ -1,23 +1,24 @@
-import { R as ResponsiveButton, N as __makeTemplateObject, Q as BaseButton, W as BaseCard, X as CardType, _ as __assign, Y as States, Z as __rest, $ as BaseCardLabel, a0 as defaultStyledTheme, a1 as ButtonGroupItem, a2 as __extends, a3 as Animations, a4 as ButtonGroupWrapper, a5 as Components, a6 as inject, a7 as observer, a8 as ToolbarIcons, a9 as SimpleBar, aa as CardType$1, ab as AdjustmentIcons, ac as TextToolStore, ad as TransformIcons, T as Tool, ae as __decorate, af as ToolControlBarIcons, ag as FocusToolStore, ah as ColorList, ai as StickerToolStore, aj as AlignIcons, ak as TextDesignToolStore, al as FrameToolStore, am as BrushToolStore, an as TransformScaleInput, ao as FlipRotateControls, ap as Modal, aq as CanvasArea, ar as CanvasBar, as as CanvasContainer, at as CustomComponentsFactory, au as Provider } from './index-72ef5294.js';
-export { b as deepmergeAll, d as defaultConfig } from './index-72ef5294.js';
+import { R as ResponsiveButton, N as __makeTemplateObject, Q as BaseButton, W as BaseCard, X as CardType, _ as __assign, Y as States, Z as __rest, $ as BaseCardLabel, a0 as defaultStyledTheme, a1 as ButtonGroupItem, a2 as __extends, a3 as Animations, a4 as ButtonGroupWrapper, a5 as Components, a6 as inject, a7 as observer, a8 as ToolbarIcons, a9 as SimpleBar, aa as CardType$1, ab as AdjustmentIcons, ac as TextToolStore, ad as TransformIcons, T as Tool, ae as __decorate, af as ToolControlBarIcons, ag as FocusToolStore, ah as ColorList, ai as StickerToolStore, aj as AlignIcons, ak as TextDesignToolStore, al as FrameToolStore, am as BrushToolStore, an as TransformScaleInput, ao as FlipRotateControls, ap as Modal, aq as CanvasArea, ar as CanvasBar, as as CanvasContainer, at as CustomComponentsFactory, au as Provider } from './index-4ccbf950.js';
+export { b as deepmergeAll, d as defaultConfig } from './index-4ccbf950.js';
 import React from 'react';
 import 'react-dom';
 import './engine.development.js';
 import styled, { css, ThemeProvider } from 'styled-components';
+import 'react-dom/server';
 
-var OutlinedPrimaryButton = styled(ResponsiveButton)(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  min-height: 32px;\n  min-width: 32px;\n"], ["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  min-height: 32px;\n  min-width: 32px;\n"])), function (props) { return props.theme.button.outlinedPrimaryBackground; }, function (props) { return props.theme.button.outlinedPrimaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; });
+var OutlinedPrimaryButton = styled(ResponsiveButton)(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  min-height: 32px;\n  min-width: 32px;\n"], ["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  min-height: 32px;\n  min-width: 32px;\n"])), function (props) { return props.theme.button.outlinedPrimaryBackground; }, function (props) { return props.theme.button.outlinedPrimaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; }, function (props) { return props.theme.measurements.fontSystem.button1.size; });
 var templateObject_1;
 
-var OutlinedSecondaryButton = styled(ResponsiveButton)(templateObject_1$1 || (templateObject_1$1 = __makeTemplateObject(["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  min-height: 32px;\n  min-width: 32px;\n"], ["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  min-height: 32px;\n  min-width: 32px;\n"])), function (props) { return props.theme.button.outlinedSecondaryBackground; }, function (props) { return props.theme.button.outlinedSecondaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; });
+var OutlinedSecondaryButton = styled(ResponsiveButton)(templateObject_1$1 || (templateObject_1$1 = __makeTemplateObject(["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  min-height: 32px;\n  min-width: 32px;\n"], ["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  min-height: 32px;\n  min-width: 32px;\n"])), function (props) { return props.theme.button.outlinedSecondaryBackground; }, function (props) { return props.theme.button.outlinedSecondaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; }, function (props) { return props.theme.measurements.fontSystem.button1.size; });
 var templateObject_1$1;
 
-var TextSecondaryButton = styled(BaseButton)(templateObject_1$2 || (templateObject_1$2 = __makeTemplateObject(["\n  color: ", ";\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"], ["\n  color: ", ";\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"])), function (props) { return props.theme.button.textSecondaryForeground; }, function (props) { return props.theme.button.textInactiveOpacity; });
+var TextSecondaryButton = styled(BaseButton)(templateObject_1$2 || (templateObject_1$2 = __makeTemplateObject(["\n  color: ", ";\n  font-size: ", "px;\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"], ["\n  color: ", ";\n  font-size: ", "px;\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"])), function (props) { return props.theme.button.textSecondaryForeground; }, function (props) { return props.theme.measurements.fontSystem.button1.size; }, function (props) { return props.theme.button.textInactiveOpacity; });
 var templateObject_1$2;
 
-var MediumCard = styled(BaseCard)(templateObject_1$3 || (templateObject_1$3 = __makeTemplateObject(["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n"], ["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n"])), function (props) { return props.theme.measurements.basicCard.medium.width; }, function (props) { return props.theme.measurements.basicCard.medium.height; });
+var MediumCard = styled(BaseCard)(templateObject_1$3 || (templateObject_1$3 = __makeTemplateObject(["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n  color: ", ";\n"], ["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n  color: ", ";\n"])), function (props) { return props.theme.measurements.basicCard.medium.width; }, function (props) { return props.theme.measurements.basicCard.medium.height; }, function (props) { return props.theme.card.foreground; });
 var templateObject_1$3;
 
-var LargeCard = styled(BaseCard)(templateObject_1$4 || (templateObject_1$4 = __makeTemplateObject(["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n"], ["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n"])), function (props) { return props.theme.measurements.basicCard.large.width; }, function (props) { return props.theme.measurements.basicCard.large.height; });
+var LargeCard = styled(BaseCard)(templateObject_1$4 || (templateObject_1$4 = __makeTemplateObject(["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n  color: ", ";\n"], ["\n  margin: 2px;\n  width: ", "px;\n  height: ", "px;\n  color: ", ";\n"])), function (props) { return props.theme.measurements.basicCard.large.width; }, function (props) { return props.theme.measurements.basicCard.large.height; }, function (props) { return props.theme.card.foreground; });
 var templateObject_1$4;
 
 var Card = function (props) {
@@ -48,7 +49,7 @@ var HorizontalDynamicScrollableContainer = function (props) {
 };
 var templateObject_1$5, templateObject_2, templateObject_3, templateObject_4;
 
-var CardLabel = styled(BaseCardLabel)(templateObject_1$6 || (templateObject_1$6 = __makeTemplateObject(["\n  height: 32px;\n  font-size: ", "px;\n"], ["\n  height: 32px;\n  font-size: ", "px;\n"])), function (props) { return props.theme.measurements.fontSystem.label2.size; });
+var CardLabel = styled(BaseCardLabel)(templateObject_1$6 || (templateObject_1$6 = __makeTemplateObject(["\n  &&& {\n    height: 32px;\n    font-size: ", "px;\n  }\n"], ["\n  &&& {\n    height: 32px;\n    font-size: ", "px;\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.label2.size; });
 var templateObject_1$6;
 
 var ToolOptionsbarStyles = styled.div(templateObject_3$1 || (templateObject_3$1 = __makeTemplateObject(["\n  position: relative;\n  overflow: hidden;\n  flex-shrink: 0;\n  height: ", "px;\n  width: 100%;\n  text-align: center;\n  z-index: ", ";\n  ", "\n"], ["\n  position: relative;\n  overflow: hidden;\n  flex-shrink: 0;\n  height: ", "px;\n  width: 100%;\n  text-align: center;\n  z-index: ", ";\n  ",
@@ -134,7 +135,7 @@ var Tab = function (_a) {
 };
 var templateObject_1$g;
 
-var TabTitleStyles = styled(ButtonGroupItem)(templateObject_1$h || (templateObject_1$h = __makeTemplateObject(["\n  display: inline-flex;\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  line-height: 16px;\n  color: ", ";\n  border-radius: unset;\n  padding: 1px 12px 2px;\n  background: ", ";\n  &.active,\n  &:active {\n    background: ", ";\n    color: ", ";\n    border-bottom: 1px solid ", ";\n  }\n  @media all and (min-width: 0) and (max-width: 599px) {\n    max-width: 150px;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n"], ["\n  display: inline-flex;\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  line-height: 16px;\n  color: ", ";\n  border-radius: unset;\n  padding: 1px 12px 2px;\n  background: ", ";\n  &.active,\n  &:active {\n    background: ", ";\n    color: ", ";\n    border-bottom: 1px solid ", ";\n  }\n  @media all and (min-width: 0) and (max-width: 599px) {\n    max-width: 150px;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.headline2.size; }, function (props) { return props.theme.measurements.fontSystem.headline2.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.headline2.case; }, function (props) { return props.theme.tabTitle.foreground; }, function (props) { return props.theme.tabTitle.background; }, function (props) { return props.theme.tabTitle.activeBackground; }, function (props) { return props.theme.tabTitle.activeForeground; }, function (props) { return props.theme.tabTitle.activeBorderColor; });
+var TabTitleStyles = styled(ButtonGroupItem)(templateObject_1$h || (templateObject_1$h = __makeTemplateObject(["\n  &&& {\n    display: inline-flex;\n    font-size: ", "px;\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    line-height: 16px;\n    color: ", ";\n    border-radius: unset;\n    padding: 1px 12px 2px;\n    background: ", ";\n    &.active,\n    &:active {\n      background: ", ";\n      color: ", ";\n      border-bottom: 1px solid ", ";\n    }\n    @media all and (min-width: 0) and (max-width: 599px) {\n      max-width: 150px;\n      text-overflow: ellipsis;\n      white-space: nowrap;\n    }\n  }\n"], ["\n  &&& {\n    display: inline-flex;\n    font-size: ", "px;\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    line-height: 16px;\n    color: ", ";\n    border-radius: unset;\n    padding: 1px 12px 2px;\n    background: ", ";\n    &.active,\n    &:active {\n      background: ", ";\n      color: ", ";\n      border-bottom: 1px solid ", ";\n    }\n    @media all and (min-width: 0) and (max-width: 599px) {\n      max-width: 150px;\n      text-overflow: ellipsis;\n      white-space: nowrap;\n    }\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.headline2.size; }, function (props) { return props.theme.measurements.fontSystem.headline2.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.headline2.case; }, function (props) { return props.theme.tabTitle.foreground; }, function (props) { return props.theme.tabTitle.background; }, function (props) { return props.theme.tabTitle.activeBackground; }, function (props) { return props.theme.tabTitle.activeForeground; }, function (props) { return props.theme.tabTitle.activeBorderColor; });
 var TabTitle = /** @class */ (function (_super) {
     __extends(TabTitle, _super);
     function TabTitle() {
@@ -423,7 +424,7 @@ var Items$1 = /** @class */ (function (_super) {
         };
         _this.renderCard = function (card) {
             var identifier = _this.filterTool.identifier;
-            return (React.createElement(BasicUIComponents.Card, { isActive: identifier === card.identifier, type: card.type, onClick: function () { return _this.onClick(card); }, key: card.identifier, image: card.thumbnailURI, style: { animationDelay: (card.delay || 0) + "s" }, label: card.name },
+            return (React.createElement(BasicUIComponents.Card, { isActive: identifier === card.identifier, type: card.type, onClick: function () { return _this.onClick(card); }, key: card.identifier, image: card.thumbnail || card.thumbnailURI, style: { animationDelay: (card.delay || 0) + "s" }, label: card.name },
                 React.createElement(BasicUIComponents.CardLabel, { withBackground: true }, card.name)));
         };
         return _this;
@@ -638,30 +639,31 @@ var Items$9 = /** @class */ (function (_super) {
             var _a = _this.props, config = _a.config, transformTool = _a.transformTool;
             var theme = config.theme;
             var component = null;
-            if (card.type === CardType$1.LARGE && card.thumbnailURI === 'assets/transform') {
+            if (card.type === CardType$1.LARGE && transformTool.checkImage(card.thumbnailURI)) {
+                component = (React.createElement(BasicUIComponents.Card, { type: card.type, onClick: function () { return _this.onClick(card); }, key: card.identifier, image: card.thumbnailURI, style: { animationDelay: (card.delay || 0) + "s" }, label: card.name },
+                    React.createElement(BasicUIComponents.CardLabel, null, card.name)));
+            }
+            else if (card.type === CardType$1.LARGE) {
                 component = (React.createElement(BasicUIComponents.Card, { type: card.type, onClick: function () { return _this.onClick(card); }, key: card.identifier, image: "", style: { animationDelay: (card.delay || 0) + "s" }, label: card.name },
                     React.createElement(LargeCardContainer, null,
                         TransformIcons.categories[card.identifier] &&
                             React.createElement(TransformIcons.categories[card.identifier]),
                         React.createElement(BasicUIComponents.CardLabel, null, card.name))));
             }
-            else if (card.type === CardType$1.LARGE) {
-                component = (React.createElement(BasicUIComponents.Card, { type: card.type, onClick: function () { return _this.onClick(card); }, key: card.identifier, image: card.thumbnailURI, style: { animationDelay: (card.delay || 0) + "s" }, label: card.name },
+            else if (transformTool.checkImage(card.thumbnailURI)) {
+                component = (React.createElement(BasicUIComponents.Card, { key: card.identifier, type: card.type, onClick: function () { return _this.onClick(card); }, image: card.thumbnailURI, style: { backgroundSize: '55%', animationDelay: (card.delay || 0) + "s" }, isActive: card.identifier === transformTool.identifier, label: card.name },
                     React.createElement(BasicUIComponents.CardLabel, null, card.name)));
             }
-            else if (card.thumbnailURI === 'assets/transform') {
+            else {
+                var icon = TransformIcons.crops[card.identifier] || TransformIcons.crops.imgly_transform_common_custom;
                 component = (React.createElement(BasicUIComponents.Card, { key: card.identifier, type: card.type, onClick: function () { return _this.onClick(card); }, image: "", style: { backgroundSize: '55%', animationDelay: (card.delay || 0) + "s" }, isActive: card.identifier === transformTool.identifier, label: card.name },
                     React.createElement(Container, null,
-                        React.createElement(TransformIcons.crops[card.identifier], {
+                        React.createElement(icon, {
                             main: theme.transform.crops.main,
                             highlight: theme.transform.crops.highlight,
                             shadow: theme.transform.crops.shadow,
                         }),
                         React.createElement(BasicUIComponents.CardLabel, null, card.name))));
-            }
-            else {
-                component = (React.createElement(BasicUIComponents.Card, { key: card.identifier, type: card.type, onClick: function () { return _this.onClick(card); }, image: card.thumbnailURI, style: { backgroundSize: '55%', animationDelay: (card.delay || 0) + "s" }, isActive: card.identifier === transformTool.identifier, label: card.name },
-                    React.createElement(BasicUIComponents.CardLabel, null, card.name)));
             }
             return component;
         };
@@ -835,8 +837,9 @@ var Controls$4 = function (_a) {
             React.createElement(Components.Input.File, { onChange: onFilesAdded })),
         React.createElement(BasicUIComponents.Other.ControlsWrapper, null,
             React.createElement(Components.Spacer, { count: 2 }),
-            React.createElement(Components.Input.Search, { onChange: searchQuery, placeholder: placeholderSearch }),
-            React.createElement(Components.Spacer, { count: 2 }),
+            library.libraryProvider ? (React.createElement(React.Fragment, null,
+                React.createElement(Components.Input.Search, { onChange: searchQuery, placeholder: placeholderSearch }),
+                React.createElement(Components.Spacer, { count: 2 }))) : null,
             React.createElement(BasicUIComponents.BarSeparator, null)),
         React.createElement(BasicUIComponents.Button.OutlinedSecondary, { ariaLabel: library.locale.controls.buttonWebcamOpen, onClick: onWebcamClick, icon: React.createElement(ToolControlBarIcons.openWebcam, null) }, library.locale.controls.buttonWebcamOpen)));
 };
@@ -880,7 +883,7 @@ var Controls$5 = function (_a) {
             React.createElement(Tab$2, { label: labels.tabColor },
                 React.createElement(Components.Spacer, { count: 1 }),
                 React.createElement(Components.Input.Selection, { isDisabled: !stickerTool.isStickerSelected, showLabel: false, label: labels.selectColor },
-                    React.createElement(ColorList, { activeColor: tintColor, colors: colorList, labelsColor: labelsColor, isDisabled: !stickerTool.isStickerSelected, colorPickerDirection: "top", onChange: stickerTool.changeTintColor, onAddSnapshot: stickerTool.tintColorSnapshot }))),
+                    React.createElement(ColorList, { parentId: labels.selectColor, activeColor: tintColor, colors: colorList, labelsColor: labelsColor, isDisabled: !stickerTool.isStickerSelected, colorPickerDirection: "top", onChange: stickerTool.changeTintColor, onAddSnapshot: stickerTool.tintColorSnapshot }))),
             React.createElement(Tab$2, { label: labels.tabOpacity },
                 React.createElement(BasicUIComponents.Slider, { isDisabled: !stickerTool.isStickerSelected, showLabel: false, style: { width: '280px' }, name: labels.sliderOpacity, value: stickerTool.opacity, min: 0, max: 1, onMouseUp: onRelease, onTouchEnd: onRelease, onChange: stickerTool.changeOpacity }))))); };
     var getCustomStickerButton = function () {
@@ -936,11 +939,11 @@ var Controls$6 = function (_a) {
                 React.createElement(Tab$3, { label: textControlsLocale.tabColor },
                     React.createElement(Components.Spacer, null),
                     React.createElement(Components.Input.Selection, { isDisabled: !textTool.isTextSelected, showLabel: false, label: textControlsLocale.selectFontColor },
-                        React.createElement(ColorList, { activeColor: textTool.activeTextColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", isDisabled: !textTool.isTextSelected, onChange: textTool.changeColor, onAddSnapshot: textTool.colorSnapshot }))),
+                        React.createElement(ColorList, { parentId: textControlsLocale.selectFontColor, activeColor: textTool.activeTextColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", isDisabled: !textTool.isTextSelected, onChange: textTool.changeColor, onAddSnapshot: textTool.colorSnapshot }))),
                 React.createElement(Tab$3, { label: textControlsLocale.tabBgColor },
                     React.createElement(Components.Spacer, null),
                     React.createElement(Components.Input.Selection, { isDisabled: !textTool.isTextSelected, showLabel: false, label: textControlsLocale.selectBackgroundColor },
-                        React.createElement(ColorList, { activeColor: textTool.activeBackgroundColor, colors: backgroundColorList, labelsColor: labelsColor, colorPickerDirection: "top", isDisabled: !textTool.isTextSelected, onChange: textTool.changeBackgroundColor, onAddSnapshot: textTool.backgroundColorSnapshot }))),
+                        React.createElement(ColorList, { parentId: textControlsLocale.selectBackgroundColor, activeColor: textTool.activeBackgroundColor, colors: backgroundColorList, labelsColor: labelsColor, colorPickerDirection: "top", isDisabled: !textTool.isTextSelected, onChange: textTool.changeBackgroundColor, onAddSnapshot: textTool.backgroundColorSnapshot }))),
                 React.createElement(Tab$3, { label: textControlsLocale.tabLineHeight },
                     React.createElement(BasicUIComponents.Slider, { isDisabled: !textTool.isTextSelected, showLabel: false, name: textControlsLocale.sliderLineSpacing, value: textTool.lineHeight, min: 0.5, max: 3, onChange: textTool.changeLineHeight, onMouseUp: onRelease, onTouchEnd: onRelease, snap: 1, divider: 1, decimal: 1 }))),
             React.createElement(BasicUIComponents.BarSeparator, null)),
@@ -958,7 +961,7 @@ var Controls$7 = function (_a) {
         React.createElement(BasicUIComponents.Button.OutlinedPrimary, { ariaLabel: textControlsLocale.buttonNew, onClick: textDesignTool.add, icon: React.createElement(ToolControlBarIcons.addText, null) }, textControlsLocale.buttonNew),
         React.createElement(BasicUIComponents.Other.ControlsWrapper, null,
             React.createElement(Components.Input.Selection, { isDisabled: !textDesignTool.isTextDesignSelected, label: textControlsLocale.selectColor },
-                React.createElement(ColorList, { activeColor: textDesignTool.activeTextColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", isDisabled: !textDesignTool.isTextDesignSelected, onChange: textDesignTool.changeColor, onAddSnapshot: textDesignTool.colorSnapshot }))),
+                React.createElement(ColorList, { parentId: textControlsLocale.selectColor, activeColor: textDesignTool.activeTextColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", isDisabled: !textDesignTool.isTextDesignSelected, onChange: textDesignTool.changeColor, onAddSnapshot: textDesignTool.colorSnapshot }))),
         React.createElement(BasicUIComponents.Button.OutlinedSecondary, { ariaLabel: textControlsLocale.buttonShuffle, onClick: textDesignTool.changeSeed, icon: React.createElement(ToolControlBarIcons.shuffle, null) }, textControlsLocale.buttonShuffle),
         React.createElement(BasicUIComponents.BarSeparator, null)));
 };
@@ -992,10 +995,11 @@ var Controls$8 = function (_a) {
                         }, onTouchEnd: function () {
                             onRelease(frameControlLocale.sliderSize);
                         } })),
-                tintable && React.createElement(Tab$4, { label: frameControlLocale.tabColor },
+                (tintable && (React.createElement(Tab$4, { label: frameControlLocale.tabColor },
                     React.createElement(Components.Spacer, { count: 1 }),
                     React.createElement(Components.Input.Selection, { label: frameControlLocale.selectColor, showLabel: false },
-                        React.createElement(ColorList, { activeColor: frameTool.activeColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", onChange: frameTool.changeColor, onAddSnapshot: frameTool.colorSnapshot }))) || null),
+                        React.createElement(ColorList, { parentId: frameControlLocale.selectColor, activeColor: frameTool.activeColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", onChange: frameTool.changeColor, onAddSnapshot: frameTool.colorSnapshot }))))) ||
+                    null),
             React.createElement(BasicUIComponents.BarSeparator, null)),
         React.createElement(BasicUIComponents.Other.EmptyDiv, null)));
 };
@@ -1016,7 +1020,7 @@ var Controls$9 = function (_a) {
                     React.createElement(Tab$5, { label: brushControlLocale.tabColor },
                         React.createElement(Components.Spacer, { count: 1 }),
                         React.createElement(Components.Input.Selection, { showLabel: false, label: brushControlLocale.selectColor },
-                            React.createElement(ColorList, { activeColor: brushTool.activeColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", onChange: brushTool.changeColor }))),
+                            React.createElement(ColorList, { parentId: brushControlLocale.selectColor, activeColor: brushTool.activeColor, colors: colorList, labelsColor: labelsColor, colorPickerDirection: "top", onChange: brushTool.changeColor }))),
                     React.createElement(Tab$5, { label: brushControlLocale.tabSize },
                         React.createElement(BasicUIComponents.Slider, { style: { width: '280px' }, showLabel: false, name: brushControlLocale.sliderSize, value: brushTool.size, min: 1, max: 100, divider: 1, onChange: brushTool.changeSize })),
                     React.createElement(Tab$5, { label: brushControlLocale.tabHardness },
@@ -1086,19 +1090,33 @@ var ToolControlsBarComponent = /** @class */ (function (_super) {
 }(React.Component));
 
 var Disable = styled.div(templateObject_1$s || (templateObject_1$s = __makeTemplateObject(["\n  position: absolute;\n  width: 100%;\n  height: ", "px;\n  bottom: 0;\n  left: 0;\n  background: ", ";\n  z-index: ", ";\n"], ["\n  position: absolute;\n  width: 100%;\n  height: ", "px;\n  bottom: 0;\n  left: 0;\n  background: ", ";\n  z-index: ", ";\n"])), function (props) { return props.theme.measurements.basicToolControlBar.maxHeight; }, function (props) { return props.theme.webcam.backdrop; }, function (props) { return props.theme.measurements.zIndex.disable; });
-var Basic = function (_a) {
-    var active = _a.active;
-    return (React.createElement(Components.Container, null,
-        active.isWebcam ? React.createElement(Disable, null) : null,
-        React.createElement(Modal, null),
-        React.createElement(CanvasArea, null,
-            React.createElement(CanvasBar, null),
-            React.createElement(CanvasContainer, null),
-            React.createElement(ToolControlsBarComponent, null),
-            React.createElement(ToolItemsBarComponent, null),
-            React.createElement(Toolbar$1, null))));
-};
-var Layout = inject('active')(observer(Basic));
+var Basic = /** @class */ (function (_super) {
+    __extends(Basic, _super);
+    function Basic() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.state = { hasError: false };
+        return _this;
+    }
+    Basic.getDerivedStateFromError = function (error) {
+        // eslint-disable-next-line no-console
+        console.error(error);
+        // Update state so the next render will show the fallback UI.
+        return { hasError: true };
+    };
+    Basic.prototype.render = function () {
+        return (React.createElement(Components.Container, null,
+            this.props.active.isWebcam ? React.createElement(Disable, null) : null,
+            React.createElement(Modal, null),
+            React.createElement(CanvasArea, null,
+                React.createElement(CanvasBar, null),
+                React.createElement(CanvasContainer, null),
+                React.createElement(ToolControlsBarComponent, null),
+                React.createElement(ToolItemsBarComponent, null),
+                React.createElement(Toolbar$1, null))));
+    };
+    return Basic;
+}(React.Component));
+var Layout = inject('active', 'modal')(observer(Basic));
 var templateObject_1$s;
 
 var BasicUI = /** @class */ (function (_super) {

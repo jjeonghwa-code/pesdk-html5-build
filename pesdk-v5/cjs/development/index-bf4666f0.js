@@ -1,8 +1,16 @@
-import { av as __values, N as __makeTemplateObject, a0 as defaultStyledTheme, a2 as __extends, aw as debounce, a5 as Components, a6 as inject, a7 as observer } from './index-72ef5294.js';
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './engine.development.js';
-import styled, { css } from 'styled-components';
+'use strict';
+
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
+var index = require('./index-e2784d43.js');
+var React = require('react');
+var React__default = _interopDefault(React);
+var ReactDOM = require('react-dom');
+var ReactDOM__default = _interopDefault(ReactDOM);
+require('./engine.development.js');
+var styled = require('styled-components');
+var styled__default = _interopDefault(styled);
+require('react-dom/server');
 
 /**
  * Check to see if string passed in is a percentage
@@ -791,7 +799,7 @@ var Color = /** @class */ (function () {
         var hex = "#" + rgbToHex(this.r, this.g, this.b, false);
         try {
             // eslint-disable-next-line no-restricted-syntax
-            for (var _b = __values(Object.keys(names)), _c = _b.next(); !_c.done; _c = _b.next()) {
+            for (var _b = index.__values(Object.keys(names)), _c = _b.next(); !_c.done; _c = _b.next()) {
                 var key = _c.value;
                 if (names[key] === hex) {
                     return key;
@@ -855,15 +863,15 @@ var Color = /** @class */ (function () {
     return Color;
 }());
 
-var CircleSliderKnob = styled.div.attrs(function (props) { return ({
+var CircleSliderKnob = styled__default.div.attrs(function (props) { return ({
     style: { left: props.position.x || 0 + "px", top: props.position.y || 0 + "px" },
-}); })(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  position: absolute;\n  height: ", "px;\n  width: ", "px;\n  border-radius: 50%;\n  border: 2px solid ", ";\n  box-sizing: border-box;\n  cursor: pointer;\n  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.11), 0 1px 3px 0 rgba(0, 0, 0, 0.46);\n  z-index: 2;\n  pointer-events: none;\n"], ["\n  position: absolute;\n  height: ", "px;\n  width: ", "px;\n  border-radius: 50%;\n  border: 2px solid ", ";\n  box-sizing: border-box;\n  cursor: pointer;\n  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.11), 0 1px 3px 0 rgba(0, 0, 0, 0.46);\n  z-index: 2;\n  pointer-events: none;\n"])), function (props) { return props.theme.measurements.color.colorPicker.thumb.size; }, function (props) { return props.theme.measurements.color.colorPicker.thumb.size; }, function (props) { return props.theme.colorPicker.controlsColor; });
-CircleSliderKnob.defaultProps = { theme: defaultStyledTheme };
+}); })(templateObject_1 || (templateObject_1 = index.__makeTemplateObject(["\n  position: absolute;\n  height: ", "px;\n  width: ", "px;\n  border-radius: 50%;\n  border: 2px solid ", ";\n  box-sizing: border-box;\n  cursor: pointer;\n  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.11), 0 1px 3px 0 rgba(0, 0, 0, 0.46);\n  z-index: 2;\n  pointer-events: none;\n"], ["\n  position: absolute;\n  height: ", "px;\n  width: ", "px;\n  border-radius: 50%;\n  border: 2px solid ", ";\n  box-sizing: border-box;\n  cursor: pointer;\n  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.11), 0 1px 3px 0 rgba(0, 0, 0, 0.46);\n  z-index: 2;\n  pointer-events: none;\n"])), function (props) { return props.theme.measurements.color.colorPicker.thumb.size; }, function (props) { return props.theme.measurements.color.colorPicker.thumb.size; }, function (props) { return props.theme.colorPicker.controlsColor; });
+CircleSliderKnob.defaultProps = { theme: index.defaultStyledTheme };
 var templateObject_1;
 
-var Root = styled.div(templateObject_1$1 || (templateObject_1$1 = __makeTemplateObject(["\n  position: relative;\n  height: 14px;\n  width: 100%;\n"], ["\n  position: relative;\n  height: 14px;\n  width: 100%;\n"])));
+var Root = styled__default.div(templateObject_1$1 || (templateObject_1$1 = index.__makeTemplateObject(["\n  position: relative;\n  height: 14px;\n  width: 100%;\n"], ["\n  position: relative;\n  height: 14px;\n  width: 100%;\n"])));
 var SliderArea = /** @class */ (function (_super) {
-    __extends(SliderArea, _super);
+    index.__extends(SliderArea, _super);
     function SliderArea(props) {
         var _this = _super.call(this, props) || this;
         _this.onDragStart = function (e) {
@@ -878,7 +886,7 @@ var SliderArea = /** @class */ (function (_super) {
             var clientY = 0;
             clientX = e.clientX;
             clientY = e.clientY;
-            var node = ReactDOM.findDOMNode(_this);
+            var node = ReactDOM__default.findDOMNode(_this);
             if (node && node instanceof HTMLElement) {
                 var _b = node.getBoundingClientRect(), top_1 = _b.top, left = _b.left, width = _b.width, height = _b.height;
                 var x = clientX - left - halfKnobSize;
@@ -906,7 +914,7 @@ var SliderArea = /** @class */ (function (_super) {
             x: props.defaultPosition.x,
             y: props.defaultPosition.y,
         };
-        _this.debouncedOnDrag = debounce(_this.onDrag, 10);
+        _this.debouncedOnDrag = index.debounce(_this.onDrag, 10);
         return _this;
     }
     SliderArea.prototype.componentWillUnmount = function () {
@@ -915,24 +923,24 @@ var SliderArea = /** @class */ (function (_super) {
     };
     SliderArea.prototype.render = function () {
         var _a = this.props, surface = _a.surface, setInnerRef = _a.setInnerRef, className = _a.className, children = _a.children;
-        return (React.createElement(Root, { ref: setInnerRef, className: className },
-            React.createElement(Components.DraggableCore, { onStart: this.onDragStart, onDrag: this.debouncedOnDrag, onStop: this.onDragStop }, surface),
+        return (React__default.createElement(Root, { ref: setInnerRef, className: className },
+            React__default.createElement(index.Components.DraggableCore, { onStart: this.onDragStart, onDrag: this.debouncedOnDrag, onStop: this.onDragStop }, surface),
             children));
     };
     SliderArea.defaultProps = {
         defaultPosition: { x: 0, y: 0 },
     };
     return SliderArea;
-}(React.Component));
-var SliderArea$1 = inject('config', 'active')(observer(SliderArea));
+}(React__default.Component));
+var SliderArea$1 = index.inject('config', 'active')(index.observer(SliderArea));
 var templateObject_1$1;
 
-var SliderBackgroundStyle = css(templateObject_1$2 || (templateObject_1$2 = __makeTemplateObject(["\n  position: absolute;\n  top: 3px;\n  left: 0;\n  width: 100%;\n  height: 8px;\n  cursor: pointer;\n  -webkit-tap-highlight-color: transparent;\n"], ["\n  position: absolute;\n  top: 3px;\n  left: 0;\n  width: 100%;\n  height: 8px;\n  cursor: pointer;\n  -webkit-tap-highlight-color: transparent;\n"])));
+var SliderBackgroundStyle = styled.css(templateObject_1$2 || (templateObject_1$2 = index.__makeTemplateObject(["\n  position: absolute;\n  top: 3px;\n  left: 0;\n  width: 100%;\n  height: 8px;\n  cursor: pointer;\n  -webkit-tap-highlight-color: transparent;\n"], ["\n  position: absolute;\n  top: 3px;\n  left: 0;\n  width: 100%;\n  height: 8px;\n  cursor: pointer;\n  -webkit-tap-highlight-color: transparent;\n"])));
 var templateObject_1$2;
 
-var Background = styled.div(templateObject_1$3 || (templateObject_1$3 = __makeTemplateObject(["\n  ", "\n  background: linear-gradient(90deg, #F00 0%, #FF0 16.66%, #0F0 33.33%, #0FF 50%, #00F 66.66%, #F0F 83.33%, #F00 100%);\n  height: 8px;\n"], ["\n  ", "\n  background: linear-gradient(90deg, #F00 0%, #FF0 16.66%, #0F0 33.33%, #0FF 50%, #00F 66.66%, #F0F 83.33%, #F00 100%);\n  height: 8px;\n"])), SliderBackgroundStyle);
+var Background = styled__default.div(templateObject_1$3 || (templateObject_1$3 = index.__makeTemplateObject(["\n  ", "\n  background: linear-gradient(90deg, #F00 0%, #FF0 16.66%, #0F0 33.33%, #0FF 50%, #00F 66.66%, #F0F 83.33%, #F00 100%);\n  height: 8px;\n"], ["\n  ", "\n  background: linear-gradient(90deg, #F00 0%, #FF0 16.66%, #0F0 33.33%, #0FF 50%, #00F 66.66%, #F0F 83.33%, #F00 100%);\n  height: 8px;\n"])), SliderBackgroundStyle);
 var HueSlider = /** @class */ (function (_super) {
-    __extends(HueSlider, _super);
+    index.__extends(HueSlider, _super);
     function HueSlider(props) {
         var _this = _super.call(this, props) || this;
         _this.onKnob = function (_a) {
@@ -965,20 +973,20 @@ var HueSlider = /** @class */ (function (_super) {
     }
     HueSlider.prototype.render = function () {
         var x = this.state.x;
-        return (React.createElement(SliderArea$1, { surface: React.createElement(Background, null), setInnerRef: this.nodeRef, onChange: this.onKnob },
-            React.createElement(CircleSliderKnob, { position: { x: x, y: 0 } })));
+        return (React__default.createElement(SliderArea$1, { surface: React__default.createElement(Background, null), setInnerRef: this.nodeRef, onChange: this.onKnob },
+            React__default.createElement(CircleSliderKnob, { position: { x: x, y: 0 } })));
     };
     return HueSlider;
-}(React.Component));
-var HueSlider$1 = inject('config')(observer(HueSlider));
+}(React__default.Component));
+var HueSlider$1 = index.inject('config')(index.observer(HueSlider));
 var templateObject_1$3;
 
-var Background$1 = styled.div.attrs(function (props) { return ({
+var Background$1 = styled__default.div.attrs(function (props) { return ({
     style: { background: "linear-gradient(to left, " + props.transparentColor + " 0%, " + props.opaqueColor + " 100%)" },
-}); })(templateObject_1$4 || (templateObject_1$4 = __makeTemplateObject(["\n  ", "\n  z-index: 1;\n"], ["\n  ", "\n  z-index: 1;\n"])), SliderBackgroundStyle);
-var TiledBackground = styled.div(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n  ", "\n  z-index: 0;\n  background-repeat: repeat-x;\n  background-size: contain;\n  background-position: left;\n  background-image: url(", ");\n"], ["\n  ", "\n  z-index: 0;\n  background-repeat: repeat-x;\n  background-size: contain;\n  background-position: left;\n  background-image: url(", ");\n"])), SliderBackgroundStyle, function (props) { return props.url; });
+}); })(templateObject_1$4 || (templateObject_1$4 = index.__makeTemplateObject(["\n  ", "\n  z-index: 1;\n"], ["\n  ", "\n  z-index: 1;\n"])), SliderBackgroundStyle);
+var TiledBackground = styled__default.div(templateObject_2 || (templateObject_2 = index.__makeTemplateObject(["\n  ", "\n  z-index: 0;\n  background-repeat: repeat-x;\n  background-size: contain;\n  background-position: left;\n  background-image: url(", ");\n"], ["\n  ", "\n  z-index: 0;\n  background-repeat: repeat-x;\n  background-size: contain;\n  background-position: left;\n  background-image: url(", ");\n"])), SliderBackgroundStyle, function (props) { return props.url; });
 var OpacitySlider = /** @class */ (function (_super) {
-    __extends(OpacitySlider, _super);
+    index.__extends(OpacitySlider, _super);
     function OpacitySlider(props) {
         var _this = _super.call(this, props) || this;
         _this.onKnob = function (_a) {
@@ -1013,21 +1021,21 @@ var OpacitySlider = /** @class */ (function (_super) {
         var _a = this.props, opaqueColor = _a.opaqueColor, transparentColor = _a.transparentColor, config = _a.config;
         var x = this.state.x;
         var url = config.assetProvider.getAbsolutePath('controls/tiled-background.png');
-        return (React.createElement(SliderArea$1, { surface: React.createElement(Background$1, { opaqueColor: opaqueColor, transparentColor: transparentColor }), setInnerRef: this.nodeRef, onChange: this.onKnob },
-            React.createElement(TiledBackground, { url: url }),
-            React.createElement(CircleSliderKnob, { position: { x: x, y: 0 } })));
+        return (React__default.createElement(SliderArea$1, { surface: React__default.createElement(Background$1, { opaqueColor: opaqueColor, transparentColor: transparentColor }), setInnerRef: this.nodeRef, onChange: this.onKnob },
+            React__default.createElement(TiledBackground, { url: url }),
+            React__default.createElement(CircleSliderKnob, { position: { x: x, y: 0 } })));
     };
     return OpacitySlider;
-}(React.Component));
-var OpacitySlider$1 = inject('config')(observer(OpacitySlider));
+}(React__default.Component));
+var OpacitySlider$1 = index.inject('config')(index.observer(OpacitySlider));
 var templateObject_1$4, templateObject_2;
 
-var Background$2 = styled.div.attrs(function (props) { return ({
+var Background$2 = styled__default.div.attrs(function (props) { return ({
     style: { backgroundColor: "hsl(" + props.hue + ", 100%, 50%)" },
-}); })(templateObject_1$5 || (templateObject_1$5 = __makeTemplateObject(["\n  ", "\n  background: linear-gradient(to top, rgb(0, 0, 0), rgba(0, 0, 0, 0)),\n   linear-gradient(to right, rgb(255, 255, 255), rgba(255, 255, 255, 0));\n  height: ", "px;\n  top: 0px;\n"], ["\n  ", "\n  background: linear-gradient(to top, rgb(0, 0, 0), rgba(0, 0, 0, 0)),\n   linear-gradient(to right, rgb(255, 255, 255), rgba(255, 255, 255, 0));\n  height: ", "px;\n  top: 0px;\n"])), SliderBackgroundStyle, function (props) { return props.theme.measurements.color.colorPicker.saturationSlider.height; });
-var Slider = styled(SliderArea$1)(templateObject_2$1 || (templateObject_2$1 = __makeTemplateObject(["\n  height: ", "px;\n  margin-top: 0px;\n"], ["\n  height: ", "px;\n  margin-top: 0px;\n"])), function (props) { return props.theme.measurements.color.colorPicker.saturationSlider.height; });
+}); })(templateObject_1$5 || (templateObject_1$5 = index.__makeTemplateObject(["\n  ", "\n  background: linear-gradient(to top, rgb(0, 0, 0), rgba(0, 0, 0, 0)),\n   linear-gradient(to right, rgb(255, 255, 255), rgba(255, 255, 255, 0));\n  height: ", "px;\n  top: 0px;\n"], ["\n  ", "\n  background: linear-gradient(to top, rgb(0, 0, 0), rgba(0, 0, 0, 0)),\n   linear-gradient(to right, rgb(255, 255, 255), rgba(255, 255, 255, 0));\n  height: ", "px;\n  top: 0px;\n"])), SliderBackgroundStyle, function (props) { return props.theme.measurements.color.colorPicker.saturationSlider.height; });
+var Slider = styled__default(SliderArea$1)(templateObject_2$1 || (templateObject_2$1 = index.__makeTemplateObject(["\n  height: ", "px;\n  margin-top: 0px;\n"], ["\n  height: ", "px;\n  margin-top: 0px;\n"])), function (props) { return props.theme.measurements.color.colorPicker.saturationSlider.height; });
 var SaturationSlider = /** @class */ (function (_super) {
-    __extends(SaturationSlider, _super);
+    index.__extends(SaturationSlider, _super);
     function SaturationSlider(props) {
         var _this = _super.call(this, props) || this;
         _this.setPositionFromColor = function (color) {
@@ -1069,70 +1077,84 @@ var SaturationSlider = /** @class */ (function (_super) {
     SaturationSlider.prototype.render = function () {
         var hue = this.props.hue;
         var position = this.state.position;
-        return (React.createElement(Slider, { surface: React.createElement(Background$2, { hue: hue }), setInnerRef: this.nodeRef, onChange: this.onChange },
-            React.createElement(CircleSliderKnob, { position: position })));
+        return (React__default.createElement(Slider, { surface: React__default.createElement(Background$2, { hue: hue }), setInnerRef: this.nodeRef, onChange: this.onChange },
+            React__default.createElement(CircleSliderKnob, { position: position })));
     };
     return SaturationSlider;
-}(React.Component));
-var SaturationSlider$1 = inject('config')(observer(SaturationSlider));
+}(React__default.Component));
+var SaturationSlider$1 = index.inject('config')(index.observer(SaturationSlider));
 var templateObject_1$5, templateObject_2$1;
 
-var Container = styled.div(templateObject_1$6 || (templateObject_1$6 = __makeTemplateObject(["\n  text-align: center;\n  width: 28px;\n  padding-left: 4px;\n"], ["\n  text-align: center;\n  width: 28px;\n  padding-left: 4px;\n"])));
-var StyledText = styled(Components.Input.Text)(templateObject_2$2 || (templateObject_2$2 = __makeTemplateObject(["\n  input {\n    text-align: center;\n    border-bottom: 1px solid ", ";\n  }\n"], ["\n  input {\n    text-align: center;\n    border-bottom: 1px solid ", ";\n  }\n"])), function (props) { return props.theme.colorPicker.inputBorderColor; });
+var Container = styled__default.div(templateObject_1$6 || (templateObject_1$6 = index.__makeTemplateObject(["\n  text-align: center;\n  width: 28px;\n  padding-left: 4px;\n"], ["\n  text-align: center;\n  width: 28px;\n  padding-left: 4px;\n"])));
+var StyledText = styled__default(index.Components.Input.Text)(templateObject_2$2 || (templateObject_2$2 = index.__makeTemplateObject(["\n  input {\n    text-align: center;\n    border-bottom: 1px solid ", ";\n  }\n"], ["\n  input {\n    text-align: center;\n    border-bottom: 1px solid ", ";\n  }\n"])), function (props) { return props.theme.colorPicker.inputBorderColor; });
 var ColorInputComponent = function (_a) {
     var value = _a.value, label = _a.label, onChange = _a.onChange;
-    return (React.createElement(Container, null,
-        React.createElement(Components.Input.Label, { name: label }),
-        React.createElement(StyledText, { min: 0, max: 255, value: value, onChange: onChange })));
+    return (React__default.createElement(Container, null,
+        React__default.createElement(index.Components.Input.Label, { name: label }),
+        React__default.createElement(StyledText, { min: 0, max: 255, value: value, onChange: onChange })));
 };
 var templateObject_1$6, templateObject_2$2;
 
-var Container$1 = styled.div(templateObject_1$7 || (templateObject_1$7 = __makeTemplateObject(["\n  text-align: left;\n  width: 62px;\n"], ["\n  text-align: left;\n  width: 62px;\n"])));
-var StyledText$1 = styled(Components.Input.Text)(templateObject_2$3 || (templateObject_2$3 = __makeTemplateObject(["\n  input {\n    text-align: left;\n    border-bottom: 1px solid ", ";\n  }\n"], ["\n  input {\n    text-align: left;\n    border-bottom: 1px solid ", ";\n  }\n"])), function (props) { return props.theme.colorPicker.inputBorderColor; });
+var Container$1 = styled__default.div(templateObject_1$7 || (templateObject_1$7 = index.__makeTemplateObject(["\n  text-align: left;\n  width: 62px;\n"], ["\n  text-align: left;\n  width: 62px;\n"])));
+var StyledText$1 = styled__default(index.Components.Input.Text)(templateObject_2$3 || (templateObject_2$3 = index.__makeTemplateObject(["\n  input {\n    text-align: left;\n    border-bottom: 1px solid ", ";\n  }\n"], ["\n  input {\n    text-align: left;\n    border-bottom: 1px solid ", ";\n  }\n"])), function (props) { return props.theme.colorPicker.inputBorderColor; });
 var HexInputComponent = function (_a) {
     var value = _a.value, label = _a.label, onChange = _a.onChange;
-    return (React.createElement(Container$1, null,
-        React.createElement(Components.Input.Label, { name: label }),
-        React.createElement(StyledText$1, { value: value.toUpperCase(), onChange: onChange })));
+    return (React__default.createElement(Container$1, null,
+        React__default.createElement(index.Components.Input.Label, { name: label }),
+        React__default.createElement(StyledText$1, { value: value.toUpperCase(), onChange: onChange })));
 };
 var templateObject_1$7, templateObject_2$3;
 
-var ColorPickerContainer = styled.div(templateObject_4 || (templateObject_4 = __makeTemplateObject(["\n  position: absolute;\n  left: -24px;\n  ", "\n  z-index: ", ";\n  display: none;\n  opacity: 0;\n  transition: opacity 0.3s ease-out;\n  ", "\n"], ["\n  position: absolute;\n  left: -24px;\n  ",
+var ColorPickerContainer = styled__default.div(templateObject_4 || (templateObject_4 = index.__makeTemplateObject(["\n  position: absolute;\n  left: -24px;\n  ", "\n  z-index: ", ";\n  display: none;\n  opacity: 0;\n  transition: opacity 0.3s ease-out;\n  ", "\n"], ["\n  position: absolute;\n  left: -24px;\n  ",
     "\n  z-index: ", ";\n  display: none;\n  opacity: 0;\n  transition: opacity 0.3s ease-out;\n  ",
     "\n"])), function (props) {
     return props.direction === 'bottom'
-        ? css(templateObject_1$8 || (templateObject_1$8 = __makeTemplateObject(["\n          bottom: -", "px;\n        "], ["\n          bottom: -", "px;\n        "])), props.theme.measurements.color.colorPicker.arrow.width / 4) : css(templateObject_2$4 || (templateObject_2$4 = __makeTemplateObject(["\n          top: -", "px;\n        "], ["\n          top: -", "px;\n        "])), props.theme.measurements.color.colorPicker.arrow.width / 4);
+        ? styled.css(templateObject_1$8 || (templateObject_1$8 = index.__makeTemplateObject(["\n          bottom: -", "px;\n        "], ["\n          bottom: -", "px;\n        "])), props.theme.measurements.color.colorPicker.arrow.width / 4) : styled.css(templateObject_2$4 || (templateObject_2$4 = index.__makeTemplateObject(["\n          top: -", "px;\n        "], ["\n          top: -", "px;\n        "])), props.theme.measurements.color.colorPicker.arrow.width / 4);
 }, function (props) { return props.theme.measurements.zIndex.input.list; }, function (props) {
-    return props.show && css(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n      display: block;\n      opacity: 1;\n      transition: opacity 0.3s ease-out;\n    "], ["\n      display: block;\n      opacity: 1;\n      transition: opacity 0.3s ease-out;\n    "])));
+    return props.show && styled.css(templateObject_3 || (templateObject_3 = index.__makeTemplateObject(["\n      display: block;\n      opacity: 1;\n      transition: opacity 0.3s ease-out;\n    "], ["\n      display: block;\n      opacity: 1;\n      transition: opacity 0.3s ease-out;\n    "])));
 });
-var TopArrow = styled.div(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n  position: absolute;\n  width: ", "px;\n  height: ", "px;\n  overflow: hidden;\n  ", "\n  left: ", "px;\n  :after {\n    content: '';\n    position: absolute;\n    width: ", "px;\n    height: ", "px;\n    left: 50%;\n    ", "\n    background-color: ", ";\n    pointer-events: none;\n  }\n"], ["\n  position: absolute;\n  width: ", "px;\n  height: ", "px;\n  overflow: hidden;\n  ",
+var TopArrow = styled__default.div(templateObject_9 || (templateObject_9 = index.__makeTemplateObject(["\n  position: absolute;\n  width: ", "px;\n  height: ", "px;\n  overflow: hidden;\n  pointer-events: none;\n  ", "\n  left: ", "px;\n  :after {\n    content: '';\n    position: absolute;\n    width: ", "px;\n    height: ", "px;\n    left: 50%;\n    ", "\n    background-color: ", ";\n    pointer-events: none;\n  }\n"], ["\n  position: absolute;\n  width: ", "px;\n  height: ", "px;\n  overflow: hidden;\n  pointer-events: none;\n  ",
     "\n  left: ", "px;\n  :after {\n    content: '';\n    position: absolute;\n    width: ", "px;\n    height: ", "px;\n    left: 50%;\n    ",
     "\n    background-color: ", ";\n    pointer-events: none;\n  }\n"])), function (props) { return props.theme.measurements.color.colorPicker.arrow.width; }, function (props) { return props.theme.measurements.color.colorPicker.arrow.width / 2; }, function (props) {
     return props.direction === 'bottom'
-        ? css(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n          bottom: 100%;\n        "], ["\n          bottom: 100%;\n        "]))) : css(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n          top: 100%;\n        "], ["\n          top: 100%;\n        "])));
+        ? styled.css(templateObject_5 || (templateObject_5 = index.__makeTemplateObject(["\n          bottom: 100%;\n        "], ["\n          bottom: 100%;\n        "]))) : styled.css(templateObject_6 || (templateObject_6 = index.__makeTemplateObject(["\n          top: 100%;\n        "], ["\n          top: 100%;\n        "])));
 }, function (props) { return props.arrowOffset || props.theme.measurements.color.colorPicker.arrow.width; }, function (props) { return props.theme.measurements.color.colorPicker.arrow.width / 2; }, function (props) { return props.theme.measurements.color.colorPicker.arrow.width / 2; }, function (props) {
     return props.direction === 'bottom'
-        ? css(templateObject_7 || (templateObject_7 = __makeTemplateObject(["\n            transform: translate(-50%, 50%) rotate(45deg);\n          "], ["\n            transform: translate(-50%, 50%) rotate(45deg);\n          "]))) : css(templateObject_8 || (templateObject_8 = __makeTemplateObject(["\n            transform: translate(-50%, -50%) rotate(45deg);\n          "], ["\n            transform: translate(-50%, -50%) rotate(45deg);\n          "])));
+        ? styled.css(templateObject_7 || (templateObject_7 = index.__makeTemplateObject(["\n            transform: translate(-50%, 50%) rotate(45deg);\n          "], ["\n            transform: translate(-50%, 50%) rotate(45deg);\n          "]))) : styled.css(templateObject_8 || (templateObject_8 = index.__makeTemplateObject(["\n            transform: translate(-50%, -50%) rotate(45deg);\n          "], ["\n            transform: translate(-50%, -50%) rotate(45deg);\n          "])));
 }, function (props) { return props.theme.colorPicker.listBackground; });
-var ColorPickerComponent = styled.div(templateObject_11 || (templateObject_11 = __makeTemplateObject(["\n  position: absolute;\n  ", "\n  padding: 16px;\n  box-sizing: border-box;\n  box-shadow: ", ";\n  background: ", ";\n  border-radius: ", "px;\n  width: ", "px;\n  left: 8px;\n  z-index: 1;\n  label.left {\n    text-align: left;\n  }\n"], ["\n  position: absolute;\n  ",
+var ColorPickerComponent = styled__default.div(templateObject_11 || (templateObject_11 = index.__makeTemplateObject(["\n  position: absolute;\n  ", "\n  padding: 16px;\n  box-sizing: border-box;\n  box-shadow: ", ";\n  background: ", ";\n  border-radius: ", "px;\n  width: ", "px;\n  left: 8px;\n  z-index: 1;\n  label.left {\n    text-align: left;\n  }\n"], ["\n  position: absolute;\n  ",
     "\n  padding: 16px;\n  box-sizing: border-box;\n  box-shadow: ", ";\n  background: ", ";\n  border-radius: ", "px;\n  width: ", "px;\n  left: 8px;\n  z-index: 1;\n  label.left {\n    text-align: left;\n  }\n"])), function (props) {
-    return props.direction === 'top' && css(templateObject_10 || (templateObject_10 = __makeTemplateObject(["\n      transform: translate(0, -100%);\n    "], ["\n      transform: translate(0, -100%);\n    "])));
+    return props.direction === 'top' && styled.css(templateObject_10 || (templateObject_10 = index.__makeTemplateObject(["\n      transform: translate(0, -100%);\n    "], ["\n      transform: translate(0, -100%);\n    "])));
 }, function (props) { return props.theme.colorPicker.listShadow; }, function (props) { return props.theme.colorPicker.listBackground; }, function (props) { return props.theme.shape.radiusMedium; }, function (props) { return props.theme.measurements.color.colorPicker.width; });
-var HueSliderComponent = styled(HueSlider$1)(templateObject_12 || (templateObject_12 = __makeTemplateObject(["\n  margin-top: 8px;\n"], ["\n  margin-top: 8px;\n"])));
-var OpacitySliderComponent = styled(OpacitySlider$1)(templateObject_13 || (templateObject_13 = __makeTemplateObject(["\n  margin-top: 8px;\n"], ["\n  margin-top: 8px;\n"])));
-var ColorValueInputs = styled.div(templateObject_14 || (templateObject_14 = __makeTemplateObject(["\n  display: flex;\n  justify-content: space-between;\n  margin-top: 30px;\n"], ["\n  display: flex;\n  justify-content: space-between;\n  margin-top: 30px;\n"])));
-var RGBContainer = styled.div(templateObject_15 || (templateObject_15 = __makeTemplateObject(["\n  display: flex;\n"], ["\n  display: flex;\n"])));
+var HueSliderComponent = styled__default(HueSlider$1)(templateObject_12 || (templateObject_12 = index.__makeTemplateObject(["\n  margin-top: 8px;\n"], ["\n  margin-top: 8px;\n"])));
+var OpacitySliderComponent = styled__default(OpacitySlider$1)(templateObject_13 || (templateObject_13 = index.__makeTemplateObject(["\n  margin-top: 8px;\n"], ["\n  margin-top: 8px;\n"])));
+var ColorValueInputs = styled__default.div(templateObject_14 || (templateObject_14 = index.__makeTemplateObject(["\n  display: flex;\n  justify-content: space-between;\n  margin-top: 30px;\n"], ["\n  display: flex;\n  justify-content: space-between;\n  margin-top: 30px;\n"])));
+var RGBContainer = styled__default.div(templateObject_15 || (templateObject_15 = index.__makeTemplateObject(["\n  display: flex;\n"], ["\n  display: flex;\n"])));
 var ColorPicker = /** @class */ (function (_super) {
-    __extends(ColorPicker, _super);
+    index.__extends(ColorPicker, _super);
     function ColorPicker(props) {
         var _this = _super.call(this, props) || this;
         _this.saturationRef = null;
         _this.hueRef = null;
         _this.opacityRef = null;
+        // check if the selected element is a sibling of the open color picker
+        _this.checkId = function (start, id, depth) {
+            var el = start;
+            var i = 0;
+            while (el.parentElement && i < depth) {
+                el = el.parentElement;
+                i += 1;
+                if (el.id === id) {
+                    return true;
+                }
+            }
+            return false;
+        };
         _this.handleOutsideClick = function (e) {
-            var _a = _this.props, onRequestClose = _a.onRequestClose, onAddSnapshot = _a.onAddSnapshot;
+            var _a = _this.props, parentId = _a.parentId, onRequestClose = _a.onRequestClose, onAddSnapshot = _a.onAddSnapshot;
             var color = _this.state.color;
-            if ((_this.node && _this.node.contains(e.target)) || e.target.classList.contains('colorItemActive')) {
+            if ((_this.node && _this.node.contains(e.target)) ||
+                (_this.checkId(e.target, parentId.replace(' ', '-'), 5) && e.target.classList.contains('active'))) {
                 return;
             }
             _this.setState({ hexInputValue: color.toHexString() });
@@ -1207,9 +1229,9 @@ var ColorPicker = /** @class */ (function (_super) {
         _this.nodeRef = function (element) {
             _this.node = element;
         };
-        _this.saturationRef = React.createRef();
-        _this.hueRef = React.createRef();
-        _this.opacityRef = React.createRef();
+        _this.saturationRef = React__default.createRef();
+        _this.hueRef = React__default.createRef();
+        _this.opacityRef = React__default.createRef();
         return _this;
     }
     ColorPicker.prototype.componentDidMount = function () {
@@ -1252,31 +1274,32 @@ var ColorPicker = /** @class */ (function (_super) {
             .clone()
             .setAlpha(0)
             .toRgbString();
-        return (React.createElement("div", { ref: this.nodeRef },
-            React.createElement(ColorPickerContainer, { show: show, direction: direction },
-                React.createElement(ColorPickerComponent, { direction: direction },
-                    React.createElement(TopArrow, { direction: direction, arrowOffset: arrowOffset }),
-                    React.createElement(SaturationSlider$1, { ref: this.saturationRef, hue: hue, onChange: this.onSaturationBrightnessChange }),
-                    React.createElement(Components.Spacer, { count: 2 }),
-                    React.createElement(Components.Input.Label, { className: "left", name: labelSliderHue }),
-                    React.createElement(HueSliderComponent, { ref: this.hueRef, onChange: this.onHueChange }),
-                    React.createElement(Components.Spacer, { count: 2 }),
-                    React.createElement(Components.Input.Label, { className: "left", name: labelSliderOpacity }),
-                    React.createElement(OpacitySliderComponent, { ref: this.opacityRef, opaqueColor: opaqueColor, transparentColor: transparentColor, onChange: this.onAlphaChange }),
-                    React.createElement(ColorValueInputs, null,
-                        React.createElement(HexInputComponent, { value: hexInputValue, label: labelHex, onChange: this.onHexValueChange }),
-                        React.createElement(RGBContainer, null,
-                            React.createElement(ColorInputComponent, { value: r, label: labelR, onChange: this.onInputChange('r') }),
-                            React.createElement(ColorInputComponent, { value: g, label: labelG, onChange: this.onInputChange('g') }),
-                            React.createElement(ColorInputComponent, { value: b, label: labelB, onChange: this.onInputChange('b') })))))));
+        return (React__default.createElement("div", { ref: this.nodeRef },
+            React__default.createElement(ColorPickerContainer, { show: show, direction: direction },
+                React__default.createElement(ColorPickerComponent, { direction: direction },
+                    React__default.createElement(TopArrow, { direction: direction, arrowOffset: arrowOffset }),
+                    React__default.createElement(SaturationSlider$1, { ref: this.saturationRef, hue: hue, onChange: this.onSaturationBrightnessChange }),
+                    React__default.createElement(index.Components.Spacer, { count: 2 }),
+                    React__default.createElement(index.Components.Input.Label, { className: "left", name: labelSliderHue }),
+                    React__default.createElement(HueSliderComponent, { ref: this.hueRef, onChange: this.onHueChange }),
+                    React__default.createElement(index.Components.Spacer, { count: 2 }),
+                    React__default.createElement(index.Components.Input.Label, { className: "left", name: labelSliderOpacity }),
+                    React__default.createElement(OpacitySliderComponent, { ref: this.opacityRef, opaqueColor: opaqueColor, transparentColor: transparentColor, onChange: this.onAlphaChange }),
+                    React__default.createElement(ColorValueInputs, null,
+                        React__default.createElement(HexInputComponent, { value: hexInputValue, label: labelHex, onChange: this.onHexValueChange }),
+                        React__default.createElement(RGBContainer, null,
+                            React__default.createElement(ColorInputComponent, { value: r, label: labelR, onChange: this.onInputChange('r') }),
+                            React__default.createElement(ColorInputComponent, { value: g, label: labelG, onChange: this.onInputChange('g') }),
+                            React__default.createElement(ColorInputComponent, { value: b, label: labelB, onChange: this.onInputChange('b') })))))));
     };
     ColorPicker.defaultProps = {
         direction: 'bottom',
     };
     return ColorPicker;
-}(React.Component));
-TopArrow.defaultProps = { theme: defaultStyledTheme };
-ColorPickerComponent.defaultProps = { theme: defaultStyledTheme };
+}(React__default.Component));
+TopArrow.defaultProps = { theme: index.defaultStyledTheme };
+ColorPickerComponent.defaultProps = { theme: index.defaultStyledTheme };
 var templateObject_1$8, templateObject_2$4, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15;
 
-export { Color, ColorPicker };
+exports.Color = Color;
+exports.ColorPicker = ColorPicker;

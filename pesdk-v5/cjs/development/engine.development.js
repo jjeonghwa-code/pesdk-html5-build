@@ -4079,7 +4079,16 @@ var AssetManager = /** @class */ (function () {
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return path.join.apply(path, __spread([_this.basePath], args));
+            var assetPath = path.join.apply(path, __spread(args));
+            // Don't prepend baseUrl to absolute urls
+            if (_this.basePath.match(/(ftp|http|https):\/\//)) {
+                var length_1 = _this.basePath.length;
+                if (_this.basePath[length_1 - 1] !== '/') {
+                    _this.basePath = _this.basePath + '/';
+                }
+                return _this.basePath + assetPath;
+            }
+            return path.join(_this.basePath, assetPath);
         };
         this.getAbsolutePathForCategory = function (assetCategory) {
             return function () {

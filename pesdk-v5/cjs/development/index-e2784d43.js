@@ -9,6 +9,7 @@ var ReactDOM__default = _interopDefault(ReactDOM);
 var photoeditorsdkEngine = require('./engine.development.js');
 var styled = require('styled-components');
 var styled__default = _interopDefault(styled);
+var server = require('react-dom/server');
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
@@ -538,6 +539,20 @@ var FilterConfiguration = /** @class */ (function () {
          * ]
          */
         this.categories = [];
+        /**
+         * Whether categories should be flattened which effectively hides the categories.
+         * If this is enabled all filters will be shown in the top-level of the filter selection tool
+         * orderes according to their parent category.
+         * @example // Defaults to:
+         * false
+         */
+        this.flattenCategories = false;
+        /**
+         * Controls if the user can load the preview thumbnail for every filter.
+         * @example // Defaults to:
+         * true
+         */
+        this.enablePreviewThumbnails = false;
     }
     return FilterConfiguration;
 }());
@@ -4824,7 +4839,16 @@ var AssetManager = /** @class */ (function () {
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i] = arguments[_i];
             }
-            return path.join.apply(path, __spread([_this.basePath], args));
+            var assetPath = path.join.apply(path, __spread(args));
+            // Don't prepend baseUrl to absolute urls
+            if (_this.basePath.match(/(ftp|http|https):\/\//)) {
+                var length_1 = _this.basePath.length;
+                if (_this.basePath[length_1 - 1] !== '/') {
+                    _this.basePath = _this.basePath + '/';
+                }
+                return _this.basePath + assetPath;
+            }
+            return path.join(_this.basePath, assetPath);
         };
         this.getAbsolutePathForCategory = function (assetCategory) {
             return function () {
@@ -9429,6 +9453,12 @@ var EntityMapper = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    EntityMapper.prototype.getCategories = function (selectedCategoryIdentifier) {
+        // important for ui to be updated
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        var categoryIndex = this.assets.findIndex(function (asset) { return asset.identifier === selectedCategoryIdentifier; });
+        return this.categories;
+    };
     Object.defineProperty(EntityMapper.prototype, "items", {
         /**
          * Returns all the relevant items for UI for any given tool
@@ -9935,6 +9965,64 @@ var FilterToolStore = /** @class */ (function () {
             });
         });
     };
+    /**
+     * filter preview is a feature, where you can see how the filter looks like with the image you loaded
+     * This function gets called on every new image
+     * it checks if, the setting is enabled and gets previews from FilterPreview module
+     */
+    FilterToolStore.prototype.setImageAndGetPreviews = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var image;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!this.config.enablePreviewThumbnails) return [3 /*break*/, 3];
+                        image = this.editor.activeStore.state.image;
+                        return [4 /*yield*/, this.editor.previewThumbnails.addImageToContainer(image)];
+                    case 1:
+                        _a.sent();
+                        return [4 /*yield*/, this.getAllFilterPreview()];
+                    case 2:
+                        _a.sent();
+                        _a.label = 3;
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    /**
+     * Gets all filter previews and update entities and ui
+     */
+    FilterToolStore.prototype.getAllFilterPreview = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var allItems, allImages, config, assets, currentTool;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        allItems = this.entityManager.items.map(function (i) { return ({
+                            identifier: i.identifier,
+                            isDuotone: _this.isOptionDuoTone(i.identifier),
+                        }); });
+                        return [4 /*yield*/, this.editor.previewThumbnails.getAllFilterPreviewThumbnails(allItems)];
+                    case 1:
+                        allImages = _a.sent();
+                        return [4 /*yield*/, this.editor.wait()];
+                    case 2:
+                        _a.sent();
+                        config = this.config;
+                        assets = this.editor.configStore.assetProvider.getAssets('filter').map(function (a) {
+                            return exports.__assign({}, a, { items: a.items.map(function (i) { return (exports.__assign({}, i, { thumbnail: allImages[i.identifier] })); }) });
+                        });
+                        this.entityManager = new EntityMapper(assets, exports.__assign({}, config, { categoryKey: 'thumbnailURI', itemDynamicKey: 'thumbnail', itemKey: 'thumbnailURI', locale: this.locale.items, getAssetPath: this.editor.getAssetPath('filter') }));
+                        currentTool = this.editor.activeStore.tool;
+                        this.editor.activeStore.selectTool(exports.Tool.LIBRARY);
+                        this.editor.activeStore.selectTool(currentTool);
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
     FilterToolStore.prototype.toolSnapshot = function () {
         this.addSnapshot("edit" /* EDIT */, this.locale.controls.sliderIntensity);
     };
@@ -10031,7 +10119,7 @@ var FilterToolStore = /** @class */ (function () {
     });
     Object.defineProperty(FilterToolStore.prototype, "categories", {
         get: function () {
-            return this.entityManager.categories;
+            return this.entityManager.getCategories(this.selectedCategoryIdentifier);
         },
         enumerable: true,
         configurable: true
@@ -11224,6 +11312,185 @@ var stickerDefaultState = {
 };
 var stickerInitialState = {};
 
+/**
+ * This module is to create preview thumbnails of a certain effect
+ * Currently only Filters
+ *
+ * Creates a new Engine instance with lesser quality settings
+ * Provides sequential resolution of promises to avoid engine errors
+ */
+var PreviewThumbnails = /** @class */ (function () {
+    /**
+     * Creates a new Engine instance
+     * Can't use the same instance, because engine works with only one base image
+     * @param Engineconfiguration
+     */
+    function PreviewThumbnails(_a) {
+        var license = _a.license, assetProvider = _a.assetProvider, crossOrigin = _a.crossOrigin;
+        this.crossOrigin = crossOrigin;
+        this.engine = new photoeditorsdkEngine.LegacyEngineAdapter({
+            license: license,
+            crossOrigin: crossOrigin,
+            assetProvider: assetProvider,
+            downscaleOptions: { maxDimensions: { width: 100, height: 100 } },
+        });
+    }
+    PreviewThumbnails.isImageElement = function (image) {
+        return image instanceof HTMLImageElement;
+    };
+    /**
+     * Sequentially takes all the filters and creates previews, one by one,
+     * at the end resolves with a promise with all the list of images with identifier
+     * @param allFilters
+     */
+    PreviewThumbnails.prototype.getAllFilterPreviewThumbnails = function (allFilters) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            var allImages = {};
+            /**
+             * Cannot use parallel operations like Promise.all here, because Engine cannot have more than one filter at a time
+             * One filter has to be removed before the next one is added
+             *
+             * Using reduce to sequentially resolve the promises https://css-tricks.com/why-using-reduce-to-sequentially-resolve-promises-works/
+             */
+            allFilters
+                .reduce(function (previousPromise, nextItem) { return __awaiter(_this, void 0, void 0, function () {
+                var image;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, previousPromise];
+                        case 1:
+                            image = _a.sent();
+                            if (image.identifier) {
+                                allImages[image.identifier] = image.imageData;
+                            }
+                            return [2 /*return*/, this.getFilterPreviewThumbnail(nextItem)];
+                    }
+                });
+            }); }, Promise.resolve({ identifier: '', imageData: '' }))
+                .then(function (image) {
+                allImages[image.identifier] = image.imageData;
+                resolve(allImages);
+            })
+                .catch(function (e) {
+                reject(e);
+            });
+        });
+    };
+    /**
+     * Given an identifier and type of filter, resolves with a lower quality exported filter image for thumbnail
+     */
+    PreviewThumbnails.prototype.getFilterPreviewThumbnail = function (_a) {
+        var _this = this;
+        var identifier = _a.identifier, isDuotone = _a.isDuotone;
+        if (identifier !== '') {
+            if (this.effect) {
+                this.engine.removeEffect(this.effect);
+                if (!this.effect.getIndexInParent()) {
+                    this.effect = undefined;
+                }
+            }
+            if (isDuotone) {
+                return new Promise(function (resolve, reject) {
+                    _this.engine
+                        .addDuoToneFilterFromAssets(identifier, _this.container)
+                        .then(function (duotoneEffect) {
+                        duotoneEffect.setProperties({ colorIntensity: 0.5 });
+                        _this.effect = duotoneEffect;
+                        _this.engine
+                            .export(exports.ExportFormat.DATA_URL, exports.ImageFormat.PNG, 0.2)
+                            .then(function (imageData) {
+                            resolve({ identifier: identifier, imageData: imageData });
+                        })
+                            .catch(function (e) {
+                            reject(e);
+                        });
+                    })
+                        .catch(function (e) {
+                        reject(e);
+                    });
+                });
+            }
+            return new Promise(function (resolve, reject) {
+                _this.engine
+                    .addLUTFilterFromAssets(identifier, _this.container)
+                    .then(function (lutfilterEffect) {
+                    lutfilterEffect.setProperties({ intensity: 1 });
+                    _this.effect = lutfilterEffect;
+                    _this.engine
+                        .export(exports.ExportFormat.DATA_URL, exports.ImageFormat.PNG, 0.2)
+                        .then(function (imageData) {
+                        resolve({ identifier: identifier, imageData: imageData });
+                    })
+                        .catch(function (e) {
+                        reject(e);
+                    });
+                })
+                    .catch(function (e) {
+                    reject(e);
+                });
+            });
+        }
+        return new Promise(function (resolve) { return resolve({ identifier: '', imageData: '' }); });
+    };
+    /**
+     * Based on image type, loads the image as elemnt or as url
+     */
+    PreviewThumbnails.prototype.addImageToContainer = function (image) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            var imageElement;
+            if (PreviewThumbnails.isImageElement(image)) {
+                imageElement = image;
+                _this.setBackgroundImage(imageElement);
+                resolve();
+            }
+            else {
+                _this.getImageElement(image)
+                    .then(function (element) {
+                    imageElement = element;
+                    _this.setBackgroundImage(imageElement);
+                    resolve();
+                })
+                    .catch(function (error) {
+                    // eslint-disable-next-line prefer-promise-reject-errors
+                    reject({ identifier: 'imageLoading', message: error.message });
+                });
+            }
+        });
+    };
+    /**
+     * Loads image before adding to the image container
+     * @param imageUrl
+     */
+    PreviewThumbnails.prototype.getImageElement = function (imageUrl) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            var image = new Image();
+            image.addEventListener('load', function () {
+                resolve(image);
+            });
+            image.addEventListener('error', function (error) {
+                reject(error);
+            });
+            image.crossOrigin = _this.crossOrigin;
+            image.src = imageUrl;
+        });
+    };
+    PreviewThumbnails.prototype.setBackgroundImage = function (image) {
+        if (!this.container) {
+            this.container = this.engine.addImage({ image: image, blendMode: exports.BlendMode.NORMAL, opacity: 1 });
+        }
+        else {
+            this.container.setData({ image: image });
+        }
+        var size = this.container.getBounds().size;
+        var outputContainer = this.engine.getOutputContainer();
+        outputContainer.setResolution(size);
+    };
+    return PreviewThumbnails;
+}());
+
 var defaultFrameColorId = 'white';
 var frameInitialState = {
     identifier: 'identity',
@@ -12342,6 +12609,11 @@ var en = {
             body: 'Serialization version is not supported',
             buttonNo: 'Close',
         },
+        unexpectedError: {
+            // eslint-disable-next-line no-template-curly-in-string
+            body: 'An unexpected error has occured ${error}',
+            buttonYes: 'Reload',
+        },
     },
     warningModals: {
         imageResized: {
@@ -12882,6 +13154,11 @@ var de = {
         unsupportedSerializationVersion: {
             body: 'Serialization version ist nicht unterstützt',
             buttonNo: 'Schließen',
+        },
+        unexpectedError: {
+            // eslint-disable-next-line no-template-curly-in-string
+            body: 'Ein erwarteter Fehler ist aufgetreten, ${error}',
+            buttonYes: 'Neu Laden',
         },
     },
     warningModals: {
@@ -13441,7 +13718,7 @@ var getDarktheme = function (_a) {
             hoverOpacity: '0.8',
         },
         modal: {
-            background: surface600,
+            background: surface800,
             bodyForeground: textHE,
             headerForeground: textME,
             backdrop: 'rgba(0, 0, 0, 0.6)',
@@ -13619,7 +13896,7 @@ var getLightTheme = function (_a) {
             hoverOpacity: '0.8',
         },
         modal: {
-            background: surface600,
+            background: surface800,
             bodyForeground: textHE,
             headerForeground: textME,
             backdrop: 'rgba(0, 0, 0, 0.6)',
@@ -14845,19 +15122,20 @@ var HistoryStore = /** @class */ (function () {
     HistoryStore.prototype.applyState = function (_a) {
         var state = _a.state;
         return __awaiter(this, void 0, void 0, function () {
-            var e_1, _b, tools, tools_1, tools_1_1, tool, _c, e_1_1;
+            var e_1, _b, tools, tools_1, tools_1_1, tool, _c, e_1_1, error_1;
             return __generator(this, function (_d) {
                 switch (_d.label) {
                     case 0:
-                        if (!state) return [3 /*break*/, 21];
+                        _d.trys.push([0, 23, , 24]);
+                        if (!state) return [3 /*break*/, 22];
                         tools = Object.keys(state);
                         _d.label = 1;
                     case 1:
-                        _d.trys.push([1, 17, 18, 19]);
+                        _d.trys.push([1, 18, 19, 20]);
                         tools_1 = __values(tools), tools_1_1 = tools_1.next();
                         _d.label = 2;
                     case 2:
-                        if (!!tools_1_1.done) return [3 /*break*/, 16];
+                        if (!!tools_1_1.done) return [3 /*break*/, 17];
                         tool = tools_1_1.value;
                         _c = tool;
                         switch (_c) {
@@ -14868,59 +15146,75 @@ var HistoryStore = /** @class */ (function () {
                             case exports.Tool.FOCUS: return [3 /*break*/, 10];
                             case exports.Tool.BRUSH: return [3 /*break*/, 11];
                             case 'sprite': return [3 /*break*/, 12];
-                            case 'localTransform': return [3 /*break*/, 13];
-                            case exports.Tool.TRANSFORM: return [3 /*break*/, 14];
+                            case 'localTransform': return [3 /*break*/, 14];
+                            case exports.Tool.TRANSFORM: return [3 /*break*/, 15];
                         }
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
                     case 3: return [4 /*yield*/, this.editor.filterToolStore.updateStateFromHistory(state[tool])];
                     case 4:
                         _d.sent();
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
                     case 5:
                         this.editor.adjustmentsToolStore.updateStateFromHistory(state[tool]);
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
                     case 6: return [4 /*yield*/, this.editor.overlayToolStore.updateStateFromHistory(state[tool])];
                     case 7:
                         _d.sent();
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
                     case 8: return [4 /*yield*/, this.editor.frameToolStore.updateStateFromHistory(state[tool])];
                     case 9:
                         _d.sent();
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
                     case 10:
                         this.editor.focusToolStore.updateStateFromHistory(state[tool], this.editor.canvasStore.sizeVector);
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
                     case 11:
                         this.editor.brushToolStore.updateStateFromHistory(state[tool]);
-                        return [3 /*break*/, 15];
-                    case 12:
-                        this.editor.spriteStore.updateStateFromHistory(state[tool], this.editor.canvasStore.sizeVector);
-                        return [3 /*break*/, 15];
+                        return [3 /*break*/, 16];
+                    case 12: return [4 /*yield*/, this.editor.spriteStore.updateStateFromHistory(state[tool], this.editor.canvasStore.sizeVector)];
                     case 13:
-                        this.editor.transformToolStore.updateLocalStateFromHistory(state.localTransform);
-                        return [3 /*break*/, 15];
+                        _d.sent();
+                        return [3 /*break*/, 16];
                     case 14:
-                        this.editor.transformToolStore.updateStateFromHistory(state[tool]);
-                        return [3 /*break*/, 15];
+                        this.editor.transformToolStore.updateLocalStateFromHistory(state.localTransform);
+                        return [3 /*break*/, 16];
                     case 15:
+                        this.editor.transformToolStore.updateStateFromHistory(state[tool]);
+                        return [3 /*break*/, 16];
+                    case 16:
                         tools_1_1 = tools_1.next();
                         return [3 /*break*/, 2];
-                    case 16: return [3 /*break*/, 19];
-                    case 17:
+                    case 17: return [3 /*break*/, 20];
+                    case 18:
                         e_1_1 = _d.sent();
                         e_1 = { error: e_1_1 };
-                        return [3 /*break*/, 19];
-                    case 18:
+                        return [3 /*break*/, 20];
+                    case 19:
                         try {
                             if (tools_1_1 && !tools_1_1.done && (_b = tools_1.return)) _b.call(tools_1);
                         }
                         finally { if (e_1) throw e_1.error; }
                         return [7 /*endfinally*/];
-                    case 19: return [4 /*yield*/, this.editor.renderPromise()];
-                    case 20:
+                    case 20: return [4 /*yield*/, this.editor.renderPromise()];
+                    case 21:
                         _d.sent();
-                        _d.label = 21;
-                    case 21: return [2 /*return*/];
+                        _d.label = 22;
+                    case 22: return [3 /*break*/, 24];
+                    case 23:
+                        error_1 = _d.sent();
+                        // eslint-disable-next-line no-console
+                        console.error(error_1);
+                        this.editor.modalStore.showActionModal({
+                            identifier: 'unexpectedError',
+                            error: error_1,
+                            handlers: {
+                                buttonYes: function () {
+                                    window.location.reload();
+                                },
+                            },
+                        });
+                        return [3 /*break*/, 24];
+                    case 24: return [2 /*return*/];
                 }
             });
         });
@@ -15113,15 +15407,17 @@ var ModalStore = /** @class */ (function () {
     });
     Object.defineProperty(ModalStore.prototype, "modalProps", {
         get: function () {
+            var locale = this.configStore.locale;
             var props = this.getProps(ModalType.WARNING) || this.getProps(ModalType.ERROR);
+            var preHeadingLocale = { error: locale.common.error, warning: locale.common.warning };
             if (this.show && props && props.message) {
                 var type = props.type, message = props.message;
                 var error = this.errorMessage;
                 // eslint-disable-next-line no-template-curly-in-string
                 message.body = message.body ? message.body.replace('${error}', error) : '';
-                return { type: type, message: message, show: this.show, handlers: this.handlers };
+                return { type: type, message: message, show: this.show, handlers: this.handlers, preHeadingLocale: preHeadingLocale };
             }
-            return { show: initialState$4.show, handlers: this.handlers };
+            return { show: initialState$4.show, handlers: this.handlers, preHeadingLocale: preHeadingLocale };
         },
         enumerable: true,
         configurable: true
@@ -15875,6 +16171,24 @@ var TransformToolStore = /** @class */ (function () {
          */
         this.localOutputSize = { width: 0, height: 0 };
         this.defaultIdentifier = 'imgly_transform_common_custom';
+        this.checkImage = function (imageSrc) {
+            var transformBaseUrl = _this.editor.configStore.config.assetBaseUrl;
+            var length = transformBaseUrl.length;
+            if (transformBaseUrl[length - 1] !== '/') {
+                transformBaseUrl += '/';
+            }
+            if (transformBaseUrl + "transform" === imageSrc) {
+                return false;
+            }
+            var img = new Image();
+            try {
+                img.src = imageSrc;
+                return true;
+            }
+            catch (err) {
+                return false;
+            }
+        };
         this.flipRatio = function () {
             _this.transformStore.flipRatio();
             _this.changeIdentifier(_this.identifier, true);
@@ -18515,175 +18829,256 @@ var SpriteStore = /** @class */ (function () {
     SpriteStore.sizeMagnitude = function (size) {
         return Vector2.fromSize(size).magnitude;
     };
-    SpriteStore.prototype.addSticker = function (_a, addSnapshot) {
-        var _this = this;
-        var spriteId = _a.spriteId, state = _a.state, transform = _a.transform;
+    SpriteStore.prototype.addSticker = function (stickerArgs, addSnapshot) {
         if (addSnapshot === void 0) { addSnapshot = true; }
-        transform = this.getTransform(transform);
-        var identifier = state.identifier;
-        var index = this.editor.orderHelper.addSprite(identifier);
-        this.editor.engine
-            .addStickerFromAssets(identifier, this.editor.engineMediator.image.container, index)
-            .then(function (stickerContainer) {
-            // Set Id
-            if (spriteId) {
-                stickerContainer.setData({ id: spriteId });
-            }
-            var id = stickerContainer.getID();
-            _this.container[id] = stickerContainer;
-            _this.editor.orderHelper.renameSprite(identifier, id);
-            // Set sticker transform and sticker container properties
-            var defaultsize = _this.getDefaultSize(id);
-            stickerContainer.setPivot(0.5, 0.5);
-            var scale;
-            if (transform.scale) {
-                scale = transform.scale;
-            }
-            else if (transform.size) {
-                scale = {
-                    x: transform.size.width / defaultsize.width,
-                    y: transform.size.height / defaultsize.height,
-                };
-            }
-            else {
-                var size = _this.editor.shortestOutputSide * 0.4;
-                var value = SpriteStore.magnitude(size) / SpriteStore.sizeMagnitude(stickerContainer.getSizeInWorldSpace());
-                scale = { x: value, y: value };
-            }
-            var _a = _this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
-            stickerContainer.setFlipHorizontally(flipHorizontally);
-            stickerContainer.setFlipVertically(flipVertically);
-            stickerContainer.setTransform({
-                position: transform.position,
-                scale: scale,
-                rotation: transform.rotation,
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.addStickerAsync(stickerArgs, addSnapshot)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
             });
-            if (state.flipHorizontally !== undefined) {
-                stickerContainer.setFlipHorizontally(state.flipHorizontally);
-            }
-            _this.setContainerProperties(id, exports.__assign({}, state));
-            // Set Sticker tool state and transform as sprite state
-            var data = stickerContainer.getData();
-            _this.setInitialSpriteState(id, exports.Tool.STICKER, defaultsize);
-            _this.stickerToolStore.setState(id, exports.__assign({}, data, { identifier: identifier }));
-            // render
-            _this.editor.render();
-            if (addSnapshot) {
-                _this.selectedId.set(id);
-                _this.addSnapshot("add" /* ADD */, _this.stickerLocale.add);
-            }
-        })
-            .catch(function (err) {
-            // eslint-disable-next-line no-console
-            console.error(err);
         });
     };
-    SpriteStore.prototype.addText = function (_a, addSnapshot) {
+    SpriteStore.prototype.addStickerAsync = function (_a, addSnapshot) {
+        var spriteId = _a.spriteId, state = _a.state, transform = _a.transform;
+        if (addSnapshot === void 0) { addSnapshot = true; }
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_b) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        transform = _this.getTransform(transform);
+                        var identifier = state.identifier;
+                        var index = _this.editor.orderHelper.addSprite(identifier);
+                        _this.editor.engine
+                            .addStickerFromAssets(identifier, _this.editor.engineMediator.image.container, index)
+                            .then(function (stickerContainer) { return __awaiter(_this, void 0, void 0, function () {
+                            var id, defaultsize, scale, size, value, _a, flipHorizontally, flipVertically, data;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
+                                    case 0:
+                                        // Set Id
+                                        if (spriteId) {
+                                            stickerContainer.setData({ id: spriteId });
+                                        }
+                                        id = stickerContainer.getID();
+                                        this.container[id] = stickerContainer;
+                                        this.editor.orderHelper.renameSprite(identifier, id);
+                                        defaultsize = this.getDefaultSize(id);
+                                        stickerContainer.setPivot(0.5, 0.5);
+                                        if (transform.scale) {
+                                            scale = transform.scale;
+                                        }
+                                        else if (transform.size) {
+                                            scale = {
+                                                x: transform.size.width / defaultsize.width,
+                                                y: transform.size.height / defaultsize.height,
+                                            };
+                                        }
+                                        else {
+                                            size = this.editor.shortestOutputSide * 0.4;
+                                            value = SpriteStore.magnitude(size) / SpriteStore.sizeMagnitude(stickerContainer.getSizeInWorldSpace());
+                                            scale = { x: value, y: value };
+                                        }
+                                        _a = this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
+                                        stickerContainer.setFlipHorizontally(flipHorizontally);
+                                        stickerContainer.setFlipVertically(flipVertically);
+                                        stickerContainer.setTransform({
+                                            position: transform.position,
+                                            scale: scale,
+                                            rotation: transform.rotation,
+                                        });
+                                        if (state.flipHorizontally !== undefined) {
+                                            stickerContainer.setFlipHorizontally(state.flipHorizontally);
+                                        }
+                                        this.setContainerProperties(id, exports.__assign({}, state));
+                                        data = stickerContainer.getData();
+                                        this.setInitialSpriteState(id, exports.Tool.STICKER, defaultsize);
+                                        this.stickerToolStore.setState(id, exports.__assign({}, data, { identifier: identifier }));
+                                        // render
+                                        return [4 /*yield*/, this.editor.renderPromise()];
+                                    case 1:
+                                        // render
+                                        _b.sent();
+                                        if (addSnapshot) {
+                                            this.selectedId.set(id);
+                                            this.addSnapshot("add" /* ADD */, this.stickerLocale.add);
+                                        }
+                                        resolve();
+                                        return [2 /*return*/];
+                                }
+                            });
+                        }); })
+                            .catch(function (err) {
+                            // eslint-disable-next-line no-console
+                            console.error(err);
+                            reject();
+                        });
+                    })];
+            });
+        });
+    };
+    SpriteStore.prototype.addText = function (textAgrs, addSnapshot) {
+        if (addSnapshot === void 0) { addSnapshot = true; }
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.addTextAsync(textAgrs, addSnapshot)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    SpriteStore.prototype.addTextAsync = function (_a, addSnapshot) {
         var _this = this;
         var spriteId = _a.spriteId, state = _a.state, transform = _a.transform;
         if (addSnapshot === void 0) { addSnapshot = true; }
-        transform = this.getTransform(transform);
-        var index = this.editor.orderHelper.addSprite(state.identifier);
-        var size = this.editor.shortestOutputSide;
-        var textData = {
-            fontIdentifier: state.identifier,
-            text: state.text,
-            width: state.width || size * 0.6,
-            fontSize: state.fontSize || size * 0.1,
-            lineHeight: state.lineHeight,
-            alignment: state.alignment,
-            textColor: state.textColor,
-            backgroundColor: state.backgroundColor,
-        };
-        if (state.backgroundColor === textDefaultState.backgroundColor) {
-            delete textData.backgroundColor;
-        }
-        this.editor.engine
-            .addTextWithFontLoading(textData, this.editor.engineMediator.image.container, index)
-            .then(function (textContainer) {
-            // Set Id
-            if (spriteId) {
-                textContainer.setData({ id: spriteId });
+        return new Promise(function (resolve, reject) {
+            transform = _this.getTransform(transform);
+            var index = _this.editor.orderHelper.addSprite(state.identifier);
+            var size = _this.editor.shortestOutputSide;
+            var textData = {
+                fontIdentifier: state.identifier,
+                text: state.text,
+                width: state.width || size * 0.6,
+                fontSize: state.fontSize || size * 0.1,
+                lineHeight: state.lineHeight,
+                alignment: state.alignment,
+                textColor: state.textColor,
+                backgroundColor: state.backgroundColor,
+            };
+            if (state.backgroundColor === textDefaultState.backgroundColor) {
+                delete textData.backgroundColor;
             }
-            var id = textContainer.getID();
-            _this.container[id] = textContainer;
-            _this.editor.orderHelper.renameSprite(state.identifier, _this.id);
-            var _a = _this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
-            textContainer.setFlipHorizontally(flipHorizontally);
-            textContainer.setFlipVertically(flipVertically);
-            // Set text container properties
-            var defaultsize = _this.getDefaultSize(id);
-            textContainer.setPivot(0.5, 0.5);
-            textContainer.setPosition(transform.position);
-            textContainer.setRotation(transform.rotation);
-            // Set Text tool state and transform as sprite state
-            _this.setInitialSpriteState(id, exports.Tool.TEXT, defaultsize);
-            var data = textContainer.getData();
-            _this.textToolStore.setState(id, exports.__assign({}, data, { backgroundColorId: state.backgroundColorId, textColorId: state.textColorId }));
-            // render
-            _this.editor.render();
-            if (addSnapshot) {
-                _this.selectedId.set(id);
-                _this.addSnapshot("add" /* ADD */, _this.textLocale.add);
-            }
-        })
-            .catch(function (err) {
-            // eslint-disable-next-line no-console
-            console.error(err);
+            _this.editor.engine
+                .addTextWithFontLoading(textData, _this.editor.engineMediator.image.container, index)
+                .then(function (textContainer) { return __awaiter(_this, void 0, void 0, function () {
+                var id, _a, flipHorizontally, flipVertically, defaultsize, data;
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0:
+                            // Set Id
+                            if (spriteId) {
+                                textContainer.setData({ id: spriteId });
+                            }
+                            id = textContainer.getID();
+                            this.container[id] = textContainer;
+                            this.editor.orderHelper.renameSprite(state.identifier, this.id);
+                            _a = this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
+                            textContainer.setFlipHorizontally(flipHorizontally);
+                            textContainer.setFlipVertically(flipVertically);
+                            defaultsize = this.getDefaultSize(id);
+                            textContainer.setPivot(0.5, 0.5);
+                            textContainer.setPosition(transform.position);
+                            textContainer.setRotation(transform.rotation);
+                            // Set Text tool state and transform as sprite state
+                            this.setInitialSpriteState(id, exports.Tool.TEXT, defaultsize);
+                            data = textContainer.getData();
+                            this.textToolStore.setState(id, exports.__assign({}, data, { backgroundColorId: state.backgroundColorId, textColorId: state.textColorId }));
+                            // render
+                            return [4 /*yield*/, this.editor.renderPromise()];
+                        case 1:
+                            // render
+                            _b.sent();
+                            if (addSnapshot) {
+                                this.selectedId.set(id);
+                                this.addSnapshot("add" /* ADD */, this.textLocale.add);
+                            }
+                            resolve();
+                            return [2 /*return*/];
+                    }
+                });
+            }); })
+                .catch(function (err) {
+                // eslint-disable-next-line no-console
+                console.error(err);
+                reject();
+            });
         });
     };
-    SpriteStore.prototype.addTextDesign = function (_a, addSnapshot, deleteOldId) {
+    SpriteStore.prototype.addTextDesign = function (textDesignArgs, addSnapshot, deleteOldId) {
+        if (addSnapshot === void 0) { addSnapshot = true; }
+        if (deleteOldId === void 0) { deleteOldId = false; }
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.addTextDesignAsync(textDesignArgs, addSnapshot, deleteOldId)];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    SpriteStore.prototype.addTextDesignAsync = function (_a, addSnapshot, deleteOldId) {
         var _this = this;
         var spriteId = _a.spriteId, state = _a.state, transform = _a.transform;
         if (addSnapshot === void 0) { addSnapshot = true; }
         if (deleteOldId === void 0) { deleteOldId = false; }
-        transform = this.getTransform(transform);
-        var index = this.editor.orderHelper.addSprite(state.identifier);
-        var size = this.editor.shortestOutputSide;
-        var textDesignData = {
-            width: state.width || size * 0.6,
-            text: state.text,
-            color: state.color,
-            inverted: state.isInverted,
-            seed: state.seed,
-            padding: state.padding,
-        };
-        this.editor.engine
-            .addTextDesignAsync(state.identifier, textDesignData, this.editor.engineMediator.image.container, index)
-            .then(function (textDesignContainer) {
-            // Set Id
-            if (spriteId) {
-                if (deleteOldId) {
-                    _this.pureRemoveSprite(spriteId);
-                    _this.textDesignToolStore.state.delete(spriteId);
-                }
-                textDesignContainer.setData({ id: spriteId });
-            }
-            var id = textDesignContainer.getID();
-            _this.container[id] = textDesignContainer;
-            _this.editor.orderHelper.renameSprite(state.identifier, _this.id);
-            var _a = _this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
-            textDesignContainer.setFlipHorizontally(flipHorizontally);
-            textDesignContainer.setFlipVertically(flipVertically);
-            // Set textdesign container properties
-            textDesignContainer.setPivot(0.5, 0.5);
-            textDesignContainer.setPosition(transform.position);
-            textDesignContainer.setRotation(transform.rotation);
-            // Set Text Design tool state and transform as sprite state
-            var defaultsize = _this.getDefaultSize(id);
-            _this.setInitialSpriteState(id, exports.Tool.TEXT_DESIGN, defaultsize);
-            var data = textDesignContainer.getData();
-            _this.textDesignToolStore.setState(id, exports.__assign({}, data, { identifier: state.identifier, textColorId: state.textColorId }));
-            // render
-            _this.editor.render();
-            if (addSnapshot) {
-                _this.selectedId.set(id);
-                _this.addSnapshot("add" /* ADD */, _this.textDesignLocale.add);
-            }
-        })
-            .catch(function (err) {
-            // eslint-disable-next-line no-console
-            console.error(err);
+        return new Promise(function (resolve, reject) {
+            transform = _this.getTransform(transform);
+            var index = _this.editor.orderHelper.addSprite(state.identifier);
+            var size = _this.editor.shortestOutputSide;
+            var textDesignData = {
+                width: state.width || size * 0.6,
+                text: state.text,
+                color: state.color,
+                inverted: state.isInverted,
+                seed: state.seed,
+                padding: state.padding,
+            };
+            _this.editor.engine
+                .addTextDesignAsync(state.identifier, textDesignData, _this.editor.engineMediator.image.container, index)
+                .then(function (textDesignContainer) { return __awaiter(_this, void 0, void 0, function () {
+                var id, _a, flipHorizontally, flipVertically, defaultsize, data;
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0:
+                            // Set Id
+                            if (spriteId) {
+                                if (deleteOldId) {
+                                    this.pureRemoveSprite(spriteId);
+                                    this.textDesignToolStore.state.delete(spriteId);
+                                }
+                                textDesignContainer.setData({ id: spriteId });
+                            }
+                            id = textDesignContainer.getID();
+                            this.container[id] = textDesignContainer;
+                            this.editor.orderHelper.renameSprite(state.identifier, this.id);
+                            _a = this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
+                            textDesignContainer.setFlipHorizontally(flipHorizontally);
+                            textDesignContainer.setFlipVertically(flipVertically);
+                            // Set textdesign container properties
+                            textDesignContainer.setPivot(0.5, 0.5);
+                            textDesignContainer.setPosition(transform.position);
+                            textDesignContainer.setRotation(transform.rotation);
+                            defaultsize = this.getDefaultSize(id);
+                            this.setInitialSpriteState(id, exports.Tool.TEXT_DESIGN, defaultsize);
+                            data = textDesignContainer.getData();
+                            this.textDesignToolStore.setState(id, exports.__assign({}, data, { identifier: state.identifier, textColorId: state.textColorId }));
+                            // render
+                            return [4 /*yield*/, this.editor.renderPromise()];
+                        case 1:
+                            // render
+                            _b.sent();
+                            if (addSnapshot) {
+                                this.selectedId.set(id);
+                                this.addSnapshot("add" /* ADD */, this.textDesignLocale.add);
+                            }
+                            resolve();
+                            return [2 /*return*/];
+                    }
+                });
+            }); })
+                .catch(function (err) {
+                // eslint-disable-next-line no-console
+                console.error(err);
+                reject();
+            });
         });
     };
     SpriteStore.prototype.spriteLocalTransform = function () {
@@ -18783,104 +19178,143 @@ var SpriteStore = /** @class */ (function () {
      * applied to the engine should be relative to the current canvasSize
      */
     SpriteStore.prototype.updateStateFromHistory = function (spriteHistoryState, relativeTo) {
-        var existingIds = Object.keys(this.container);
-        var ids = spriteHistoryState.spriteIdList;
-        if (ids.length !== existingIds.length) {
-            var deleted = existingIds.filter(function (e) { return ids.indexOf(e) === -1; });
-            var added = ids.filter(function (e) { return existingIds.indexOf(e) === -1; });
-            if (deleted.length) {
-                this.pureRemoveSprite(deleted[0]);
-            }
-            if (added.length) {
-                /** In case of history in one step only one sprite can get added/deleted */
-                var id = added[0];
-                var spriteState = spriteHistoryState.common ? spriteHistoryState.common[id] : undefined;
-                var stickerState = spriteHistoryState.sticker ? spriteHistoryState.sticker[id] : undefined;
-                var textState = spriteHistoryState.text ? spriteHistoryState.text[id] : undefined;
-                var textDesignState = spriteHistoryState.textdesign ? spriteHistoryState.textdesign[id] : undefined;
-                if (spriteState) {
-                    /** Map sizes and widths relative to canvasSize */
-                    var convertedSpriteState = {
-                        spriteId: id,
-                        transform: {
-                            size: spriteState.size
-                                ? vectorToSize(Vector2.fromSize(spriteState.size).multiply(relativeTo))
-                                : undefined,
-                            position: this.editor.previewToWorld(new Vector2(spriteState.position).multiply(relativeTo)),
-                            rotation: spriteState.rotation,
-                        },
-                    };
-                    if (textState) {
-                        this.addNewText(convertedSpriteState, textState);
-                    }
-                    else if (textDesignState) {
-                        this.addNewTextDesign(convertedSpriteState, textDesignState);
-                    }
-                    else if (stickerState) {
-                        this.addNewSticker(convertedSpriteState, stickerState);
-                    }
+        return __awaiter(this, void 0, void 0, function () {
+            var existingIds, ids, deleted, added, id, spriteState, stickerState, textState, textDesignState, convertedSpriteState;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        existingIds = Object.keys(this.container);
+                        ids = spriteHistoryState.spriteIdList;
+                        if (!(ids.length !== existingIds.length)) return [3 /*break*/, 7];
+                        deleted = existingIds.filter(function (e) { return ids.indexOf(e) === -1; });
+                        added = ids.filter(function (e) { return existingIds.indexOf(e) === -1; });
+                        if (deleted.length) {
+                            this.pureRemoveSprite(deleted[0]);
+                        }
+                        if (!added.length) return [3 /*break*/, 6];
+                        id = added[0];
+                        spriteState = spriteHistoryState.common ? spriteHistoryState.common[id] : undefined;
+                        stickerState = spriteHistoryState.sticker ? spriteHistoryState.sticker[id] : undefined;
+                        textState = spriteHistoryState.text ? spriteHistoryState.text[id] : undefined;
+                        textDesignState = spriteHistoryState.textdesign ? spriteHistoryState.textdesign[id] : undefined;
+                        if (!spriteState) return [3 /*break*/, 6];
+                        convertedSpriteState = {
+                            spriteId: id,
+                            transform: {
+                                size: spriteState.size
+                                    ? vectorToSize(Vector2.fromSize(spriteState.size).multiply(relativeTo))
+                                    : undefined,
+                                position: this.editor.previewToWorld(new Vector2(spriteState.position).multiply(relativeTo)),
+                                rotation: spriteState.rotation,
+                            },
+                        };
+                        if (!textState) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this.addNewText(convertedSpriteState, textState)];
+                    case 1:
+                        _a.sent();
+                        return [3 /*break*/, 6];
+                    case 2:
+                        if (!textDesignState) return [3 /*break*/, 4];
+                        return [4 /*yield*/, this.addNewTextDesign(convertedSpriteState, textDesignState)];
+                    case 3:
+                        _a.sent();
+                        return [3 /*break*/, 6];
+                    case 4:
+                        if (!stickerState) return [3 /*break*/, 6];
+                        return [4 /*yield*/, this.addNewSticker(convertedSpriteState, stickerState)];
+                    case 5:
+                        _a.sent();
+                        _a.label = 6;
+                    case 6: return [3 /*break*/, 8];
+                    case 7:
+                        this.upateSpriteStateFromHistory(spriteHistoryState, relativeTo);
+                        _a.label = 8;
+                    case 8: return [2 /*return*/];
                 }
-            }
-        }
-        else {
-            this.upateSpriteStateFromHistory(spriteHistoryState, relativeTo);
-        }
+            });
+        });
     };
     SpriteStore.prototype.addNewText = function (spriteState, textState) {
-        if (this.textToolStore.doesTextAssetExist(textState.identifier)) {
-            this.addText(exports.__assign({}, spriteState, { state: textState }), false);
-        }
-        else {
-            throw new Error("Text identifier " + textState.identifier + " doesn't exist");
-        }
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!this.textToolStore.doesTextAssetExist(textState.identifier)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this.addTextAsync(exports.__assign({}, spriteState, { state: textState }), false)];
+                    case 1:
+                        _a.sent();
+                        return [3 /*break*/, 3];
+                    case 2: throw new Error("Text identifier " + textState.identifier + " doesn't exist");
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
     };
     SpriteStore.prototype.addNewTextDesign = function (spriteState, textDesignState) {
-        if (this.textDesignToolStore.doesTextDesignAssetExist(textDesignState.identifier)) {
-            this.addTextDesign(exports.__assign({}, spriteState, { state: textDesignState }), false);
-        }
-        else {
-            throw new Error("Text identifier " + textDesignState.identifier + " doesn't exist");
-        }
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                if (this.textDesignToolStore.doesTextDesignAssetExist(textDesignState.identifier)) {
+                    this.addTextDesignAsync(exports.__assign({}, spriteState, { state: textDesignState }), false);
+                }
+                else {
+                    throw new Error("Text identifier " + textDesignState.identifier + " doesn't exist");
+                }
+                return [2 /*return*/];
+            });
+        });
     };
     SpriteStore.prototype.addNewSticker = function (spriteState, stickerState) {
-        if (this.stickerToolStore.doesStickerAssetExist(stickerState.identifier)) {
-            this.addSticker(exports.__assign({}, spriteState, { state: stickerState }), false);
-        }
-        else {
-            throw new Error("Text identifier " + stickerState.identifier + " doesn't exist");
-        }
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!this.stickerToolStore.doesStickerAssetExist(stickerState.identifier)) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this.addStickerAsync(exports.__assign({}, spriteState, { state: stickerState }), false)];
+                    case 1:
+                        _a.sent();
+                        return [3 /*break*/, 3];
+                    case 2: throw new Error("Text identifier " + stickerState.identifier + " doesn't exist");
+                    case 3: return [2 /*return*/];
+                }
+            });
+        });
     };
     SpriteStore.prototype.upateSpriteStateFromHistory = function (spriteHistoryState, relativeTo) {
-        var _this = this;
-        Object.keys(this.container).forEach(function (id) {
-            var spriteState = spriteHistoryState.common ? spriteHistoryState.common[id] : undefined;
-            var stickerState = spriteHistoryState.sticker ? spriteHistoryState.sticker[id] : undefined;
-            var textState = spriteHistoryState.text ? spriteHistoryState.text[id] : undefined;
-            var textDesignState = spriteHistoryState.textdesign ? spriteHistoryState.textdesign[id] : undefined;
-            var spriteC = _this.state.get(id);
-            if (spriteC && spriteState) {
-                _this.state.set(id, spriteC);
-                var position = _this.editor.previewToWorld(new Vector2(spriteState.position).multiply(relativeTo));
-                _this.container[id].setPosition(position);
-                _this.container[id].setRotation(spriteState.rotation);
-                spriteC.rotation = _this.container[id].getRotation();
-                if (stickerState) {
-                    var scale = SpriteStore.sizeMagnitude(vectorToSize(Vector2.fromSize(spriteState.size).multiply(relativeTo))) /
-                        SpriteStore.sizeMagnitude(spriteState.defaultSize);
-                    _this.container[id].setScale({ x: scale, y: scale });
-                    _this.stickerToolStore.updateStateFromHistory(id, stickerState);
-                }
-                else if (textState) {
-                    _this.textToolStore.updateStateFromHistory(id, exports.__assign({}, textState, { fontIdentifier: textState.identifier }));
-                }
-                else if (textDesignState) {
-                    _this.textDesignToolStore.updateStateFromHistory(id, exports.__assign({}, textDesignState, { inverted: textDesignState.isInverted }));
-                }
-                _this.updatePositionAndSize(id);
-                if (textState) {
-                    _this.setDefaultSize(id);
-                }
-            }
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                Object.keys(this.container).forEach(function (id) {
+                    var spriteState = spriteHistoryState.common ? spriteHistoryState.common[id] : undefined;
+                    var stickerState = spriteHistoryState.sticker ? spriteHistoryState.sticker[id] : undefined;
+                    var textState = spriteHistoryState.text ? spriteHistoryState.text[id] : undefined;
+                    var textDesignState = spriteHistoryState.textdesign ? spriteHistoryState.textdesign[id] : undefined;
+                    var spriteC = _this.state.get(id);
+                    if (spriteC && spriteState) {
+                        _this.state.set(id, spriteC);
+                        var position = _this.editor.previewToWorld(new Vector2(spriteState.position).multiply(relativeTo));
+                        _this.container[id].setPosition(position);
+                        _this.container[id].setRotation(spriteState.rotation);
+                        spriteC.rotation = _this.container[id].getRotation();
+                        if (stickerState) {
+                            var scale = SpriteStore.sizeMagnitude(vectorToSize(Vector2.fromSize(spriteState.size).multiply(relativeTo))) /
+                                SpriteStore.sizeMagnitude(spriteState.defaultSize);
+                            _this.container[id].setScale({ x: scale, y: scale });
+                            _this.stickerToolStore.updateStateFromHistory(id, stickerState);
+                        }
+                        else if (textState) {
+                            _this.textToolStore.updateStateFromHistory(id, exports.__assign({}, textState, { fontIdentifier: textState.identifier }));
+                        }
+                        else if (textDesignState) {
+                            _this.textDesignToolStore.updateStateFromHistory(id, exports.__assign({}, textDesignState, { inverted: textDesignState.isInverted }));
+                        }
+                        _this.updatePositionAndSize(id);
+                        if (textState) {
+                            _this.setDefaultSize(id);
+                        }
+                    }
+                });
+                return [2 /*return*/];
+            });
         });
     };
     SpriteStore.prototype.getSpriteState = function () {
@@ -18899,19 +19333,18 @@ var SpriteStore = /** @class */ (function () {
     };
     SpriteStore.prototype.updateStateFromSerialization = function (state, customstickers) {
         return __awaiter(this, void 0, void 0, function () {
-            var imagePromises, imageData_1, e_1;
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var imagePromises, imageData_1, e_1, i, id, spriteState, stickerState, textState, textDesignState, size, zeroInPreview, sizeInPreview, _a, flipHorizontally, flipVertically, outputRotation, rotation, convertedSpriteState;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         if (!(customstickers && customstickers.length)) return [3 /*break*/, 4];
-                        _a.label = 1;
+                        _b.label = 1;
                     case 1:
-                        _a.trys.push([1, 3, , 4]);
+                        _b.trys.push([1, 3, , 4]);
                         imagePromises = customstickers.map(function (c) { return loadImage(c.raster.data, true); });
                         return [4 /*yield*/, Promise.all(imagePromises)];
                     case 2:
-                        imageData_1 = _a.sent();
+                        imageData_1 = _b.sent();
                         this.stickerToolStore.addCustomStickerAsset(customstickers.map(function (c, i) { return ({
                             image: imageData_1[i].image,
                             smallImage: imageData_1[i].smallImage,
@@ -18921,53 +19354,72 @@ var SpriteStore = /** @class */ (function () {
                         }); }));
                         return [3 /*break*/, 4];
                     case 3:
-                        e_1 = _a.sent();
+                        e_1 = _b.sent();
                         this.editor.modalStore.hideModal();
                         this.editor.modalStore.showActionModal({ identifier: 'stickerLoading' });
                         return [3 /*break*/, 4];
                     case 4:
-                        state.spriteIdList.forEach(function (id) {
-                            var spriteState = state.common ? state.common[id] : undefined;
-                            var stickerState = state.sticker ? state.sticker[id] : undefined;
-                            var textState = state.text ? state.text[id] : undefined;
-                            var textDesignState = state.textdesign ? state.textdesign[id] : undefined;
-                            if (spriteState) {
-                                var size = spriteState.size;
-                                if (spriteState.size) {
-                                    var zeroInPreview = _this.editor.worldToPreview({ x: 0, y: 0 });
-                                    var sizeInPreview = _this.editor.worldToPreview({ x: spriteState.size.width, y: spriteState.size.height });
-                                    size = {
-                                        height: Math.abs(sizeInPreview.y - zeroInPreview.y),
-                                        width: Math.abs(sizeInPreview.x - zeroInPreview.x),
-                                    };
-                                }
-                                var _a = _this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
-                                var outputRotation = _this.editor.outputContainer.getRotation();
-                                var rotation = applyFlipToRotation({
-                                    rotation: spriteState.rotation + outputRotation,
-                                    flipHorizontally: flipHorizontally,
-                                    flipVertically: flipVertically,
-                                });
-                                var convertedSpriteState = {
-                                    spriteId: id,
-                                    transform: {
-                                        size: size,
-                                        position: spriteState.position,
-                                        rotation: rotation,
-                                    },
-                                };
-                                if (textState) {
-                                    _this.addNewText(convertedSpriteState, textState);
-                                }
-                                else if (textDesignState) {
-                                    _this.addNewTextDesign(convertedSpriteState, textDesignState);
-                                }
-                                else if (stickerState) {
-                                    _this.addNewSticker(convertedSpriteState, stickerState);
-                                }
-                            }
+                        i = 0;
+                        _b.label = 5;
+                    case 5:
+                        if (!(i < state.spriteIdList.length)) return [3 /*break*/, 12];
+                        id = state.spriteIdList[i];
+                        spriteState = state.common ? state.common[id] : undefined;
+                        stickerState = state.sticker ? state.sticker[id] : undefined;
+                        textState = state.text ? state.text[id] : undefined;
+                        textDesignState = state.textdesign ? state.textdesign[id] : undefined;
+                        if (!spriteState) return [3 /*break*/, 11];
+                        size = spriteState.size;
+                        if (spriteState.size) {
+                            zeroInPreview = this.editor.worldToPreview({ x: 0, y: 0 });
+                            sizeInPreview = this.editor.worldToPreview({ x: spriteState.size.width, y: spriteState.size.height });
+                            size = {
+                                height: Math.abs(sizeInPreview.y - zeroInPreview.y),
+                                width: Math.abs(sizeInPreview.x - zeroInPreview.x),
+                            };
+                        }
+                        _a = this.editor.outputContainer.getData(), flipHorizontally = _a.flipHorizontally, flipVertically = _a.flipVertically;
+                        outputRotation = this.editor.outputContainer.getRotation();
+                        rotation = applyFlipToRotation({
+                            rotation: spriteState.rotation + outputRotation,
+                            flipHorizontally: flipHorizontally,
+                            flipVertically: flipVertically,
                         });
-                        return [2 /*return*/];
+                        convertedSpriteState = {
+                            spriteId: id,
+                            transform: {
+                                size: size,
+                                position: spriteState.position,
+                                rotation: rotation,
+                            },
+                        };
+                        if (!textState) return [3 /*break*/, 7];
+                        // eslint-disable-next-line no-await-in-loop
+                        return [4 /*yield*/, this.addNewText(convertedSpriteState, textState)];
+                    case 6:
+                        // eslint-disable-next-line no-await-in-loop
+                        _b.sent();
+                        return [3 /*break*/, 11];
+                    case 7:
+                        if (!textDesignState) return [3 /*break*/, 9];
+                        // eslint-disable-next-line no-await-in-loop
+                        return [4 /*yield*/, this.addNewTextDesign(convertedSpriteState, textDesignState)];
+                    case 8:
+                        // eslint-disable-next-line no-await-in-loop
+                        _b.sent();
+                        return [3 /*break*/, 11];
+                    case 9:
+                        if (!stickerState) return [3 /*break*/, 11];
+                        // eslint-disable-next-line no-await-in-loop
+                        return [4 /*yield*/, this.addNewSticker(convertedSpriteState, stickerState)];
+                    case 10:
+                        // eslint-disable-next-line no-await-in-loop
+                        _b.sent();
+                        _b.label = 11;
+                    case 11:
+                        i += 1;
+                        return [3 /*break*/, 5];
+                    case 12: return [2 /*return*/];
                 }
             });
         });
@@ -19643,10 +20095,19 @@ var SpriteStore = /** @class */ (function () {
     ], SpriteStore.prototype, "addSticker", null);
     __decorate([
         action
+    ], SpriteStore.prototype, "addStickerAsync", null);
+    __decorate([
+        action
     ], SpriteStore.prototype, "addText", null);
     __decorate([
         action
+    ], SpriteStore.prototype, "addTextAsync", null);
+    __decorate([
+        action
     ], SpriteStore.prototype, "addTextDesign", null);
+    __decorate([
+        action
+    ], SpriteStore.prototype, "addTextDesignAsync", null);
     __decorate([
         action
     ], SpriteStore.prototype, "clickableCanvas", null);
@@ -20490,7 +20951,7 @@ var SerializationMediator = /** @class */ (function () {
         var image = (_a === void 0 ? { image: false } : _a).image;
         this.editor.modalStore.showInfoModal('saving');
         return new Promise(function (resolve, reject) {
-            new Promise(function (resolve) { resolve(require('./index-a57527fe.js')); }).then(function (_a) {
+            new Promise(function (resolve) { resolve(require('./index-9973505b.js')); }).then(function (_a) {
                 var Serializer = _a.Serializer;
                 return __awaiter(_this, void 0, void 0, function () {
                     var _b, transformedImageSize, untransformedImageSize, serialization, state, _c, sprite_1, customStickers, imageData, e_1;
@@ -20544,10 +21005,20 @@ var SerializationMediator = /** @class */ (function () {
     SerializationMediator.prototype.deserialize = function (data) {
         var _this = this;
         this.editor.modalStore.showInfoModal('loading');
+        /** Resetting all local states */
         this.editor.resetToolStates();
+        /** reseting transform containers */
+        var isToolTransform = this.editor.activeStore.tool === exports.Tool.TRANSFORM;
+        if (!isToolTransform) {
+            this.editor.transformToolStore.onEnter();
+        }
+        this.editor.transformToolStore.reset();
+        if (!isToolTransform) {
+            this.editor.transformToolStore.onLeave();
+        }
         return new Promise(function (resolve, reject) {
             try {
-                new Promise(function (resolve) { resolve(require('./index-a57527fe.js')); }).then(function (_a) {
+                new Promise(function (resolve) { resolve(require('./index-9973505b.js')); }).then(function (_a) {
                     var Deserializer = _a.Deserializer;
                     return __awaiter(_this, void 0, void 0, function () {
                         var transformedImageSize, untransformedImageSize, deserializer, error, appState, image;
@@ -20569,7 +21040,7 @@ var SerializationMediator = /** @class */ (function () {
                                             error = _this.editor.modalStore.modalProps.message.body;
                                         }
                                     });
-                                    if (!appState) return [3 /*break*/, 6];
+                                    if (!appState) return [3 /*break*/, 5];
                                     if (!(appState.image && appState.image.data)) return [3 /*break*/, 2];
                                     image = appState.image.data;
                                     this.editor.setImage(image);
@@ -20595,26 +21066,20 @@ var SerializationMediator = /** @class */ (function () {
                                     this.editor.transformToolStore.setCropDefaults();
                                     this.editor.historyStore.addInitialSnapshot();
                                     this.editor.transformToolStore.saveTransforms();
-                                    return [3 /*break*/, 3];
-                                case 2:
-                                    this.editor.transformToolStore.reset();
-                                    _b.label = 3;
+                                    _b.label = 2;
+                                case 2: return [4 /*yield*/, this.applyUIstate(appState)];
                                 case 3:
-                                    this.editor.transformToolStore.applyDefaultCrop(false);
-                                    this.editor.canvasStore.updateCanvasDimensions();
-                                    return [4 /*yield*/, this.applyUIstate(appState)];
-                                case 4:
                                     _b.sent();
                                     return [4 /*yield*/, this.editor.render()];
-                                case 5:
+                                case 4:
                                     _b.sent();
                                     this.editor.modalStore.hideModal();
                                     resolve();
-                                    return [3 /*break*/, 7];
-                                case 6:
+                                    return [3 /*break*/, 6];
+                                case 5:
                                     reject(error);
-                                    _b.label = 7;
-                                case 7: return [2 /*return*/];
+                                    _b.label = 6;
+                                case 6: return [2 /*return*/];
                             }
                         });
                     });
@@ -20635,60 +21100,81 @@ var SerializationMediator = /** @class */ (function () {
      */
     SerializationMediator.prototype.applyUIstate = function (appState) {
         return __awaiter(this, void 0, void 0, function () {
-            var isToolTransform;
+            var isToolTransform, error_1;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         isToolTransform = this.editor.activeStore.tool === exports.Tool.TRANSFORM;
-                        if (!appState.transform) return [3 /*break*/, 2];
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 12, , 13]);
+                        if (!appState.transform) return [3 /*break*/, 3];
                         if (!isToolTransform) {
                             this.editor.transformToolStore.onEnter();
                         }
                         this.editor.transformToolStore.updateStateFromSerialization(appState.transform);
                         return [4 /*yield*/, this.editor.wait()];
-                    case 1:
+                    case 2:
                         _a.sent();
                         if (!isToolTransform) {
                             this.editor.transformToolStore.onLeave();
                         }
-                        _a.label = 2;
-                    case 2:
-                        if (!appState.filter) return [3 /*break*/, 4];
-                        return [4 /*yield*/, this.editor.filterToolStore.updateStateFromSerialization(appState.filter)];
+                        _a.label = 3;
                     case 3:
-                        _a.sent();
-                        _a.label = 4;
+                        if (!appState.filter) return [3 /*break*/, 5];
+                        return [4 /*yield*/, this.editor.filterToolStore.updateStateFromSerialization(appState.filter)];
                     case 4:
+                        _a.sent();
+                        _a.label = 5;
+                    case 5:
                         if (appState.adjustment) {
                             this.editor.adjustmentsToolStore.updateStateFromSerialization(appState.adjustment);
                         }
                         if (appState.focus) {
                             this.editor.focusToolStore.updateStateFromSerialization(appState.focus);
                         }
-                        if (!appState.frame) return [3 /*break*/, 6];
+                        if (!appState.frame) return [3 /*break*/, 7];
                         return [4 /*yield*/, this.editor.frameToolStore.updateStateFromSerialization(appState.frame)];
-                    case 5:
-                        _a.sent();
-                        _a.label = 6;
                     case 6:
-                        if (!appState.overlay) return [3 /*break*/, 8];
-                        return [4 /*yield*/, this.editor.overlayToolStore.updateStateFromSerialization(appState.overlay)];
-                    case 7:
                         _a.sent();
-                        _a.label = 8;
+                        _a.label = 7;
+                    case 7:
+                        if (!appState.overlay) return [3 /*break*/, 9];
+                        return [4 /*yield*/, this.editor.overlayToolStore.updateStateFromSerialization(appState.overlay)];
                     case 8:
-                        if (appState.sprite) {
-                            appState.sprite.spriteIdList = appState.sprite.spriteIdList.sort(function (firstElId, secondElId) {
-                                var firstElOrder = appState.sprite.common[firstElId].order;
-                                var secondElOrder = appState.sprite.common[secondElId].order;
-                                return firstElOrder - secondElOrder;
-                            });
-                            this.editor.spriteStore.updateStateFromSerialization(appState.sprite, appState.customStickers);
-                        }
+                        _a.sent();
+                        _a.label = 9;
+                    case 9:
+                        if (!appState.sprite) return [3 /*break*/, 11];
+                        appState.sprite.spriteIdList = appState.sprite.spriteIdList.sort(function (firstElId, secondElId) {
+                            var firstElOrder = appState.sprite.common[firstElId].order;
+                            var secondElOrder = appState.sprite.common[secondElId].order;
+                            return firstElOrder - secondElOrder;
+                        });
+                        return [4 /*yield*/, this.editor.spriteStore.updateStateFromSerialization(appState.sprite, appState.customStickers)];
+                    case 10:
+                        _a.sent();
+                        _a.label = 11;
+                    case 11:
                         if (appState.brush) {
                             this.editor.brushToolStore.updateStateFromHistory(appState.brush);
                         }
-                        return [2 /*return*/];
+                        return [3 /*break*/, 13];
+                    case 12:
+                        error_1 = _a.sent();
+                        // eslint-disable-next-line no-console
+                        console.error(error_1);
+                        this.editor.modalStore.showActionModal({
+                            identifier: 'unexpectedError',
+                            error: error_1,
+                            handlers: {
+                                buttonYes: function () {
+                                    window.location.reload();
+                                },
+                            },
+                        });
+                        return [3 /*break*/, 13];
+                    case 13: return [2 /*return*/];
                 }
             });
         });
@@ -24132,6 +24618,10 @@ var Editor = /** @class */ (function () {
         if (this.configStore.config.displayResizeWarning) {
             this.checkImageResize();
         }
+        if (this.configStore.config.filter.enablePreviewThumbnails) {
+            var engineConfig = this.configStore.config.engine;
+            this.previewThumbnails = new PreviewThumbnails(exports.__assign({}, engineConfig, { license: this.configStore.config.license, assetProvider: this.configStore.assetProvider }));
+        }
     }
     Object.defineProperty(Editor, "defaultColors", {
         get: function () {
@@ -24198,8 +24688,8 @@ var Editor = /** @class */ (function () {
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
-                        _b.trys.push([0, 3, , 4]);
-                        this.modalStore.showInfoModal('resizing');
+                        _b.trys.push([0, 4, , 5]);
+                        this.modalStore.showInfoModal(this.configStore.config.displayResizeWarning ? 'resizing' : 'loading');
                         this.scale.defaultScale = 1;
                         this.scale.resetOffset();
                         this.activeStore.setImage(image);
@@ -24217,6 +24707,9 @@ var Editor = /** @class */ (function () {
                          */
                         this.engineMediator.output.applyNewImageTransform();
                         this.engineMediator.preview.updateTransform();
+                        return [4 /*yield*/, this.filterToolStore.setImageAndGetPreviews()];
+                    case 2:
+                        _b.sent();
                         this.scale.setInitialTransform();
                         this.transformToolStore.setCropDefaults();
                         this.historyStore.addInitialSnapshot();
@@ -24239,17 +24732,18 @@ var Editor = /** @class */ (function () {
                         /** Initial calculation of preview Top-Left */
                         this.snappingStore.calculatePreviewTopLeftPosition();
                         return [4 /*yield*/, this.renderPromise()];
-                    case 2:
+                    case 3:
                         _b.sent();
                         activeTool = this.activeStore.tool;
                         if (!activeTool) {
                             this.onReady();
                         }
-                        this.modalStore.hideModal();
-                        return [3 /*break*/, 4];
-                    case 3:
+                        if (!this.configStore.config.filter.enablePreviewThumbnails) {
+                            this.modalStore.hideModal();
+                        }
+                        return [3 /*break*/, 5];
+                    case 4:
                         error_1 = _b.sent();
-                        console.log(error_1);
                         this.modalStore.hideModal();
                         this.modalStore.showActionModal({
                             identifier: error_1.identifier ? error_1.identifier : 'rendering',
@@ -24260,8 +24754,8 @@ var Editor = /** @class */ (function () {
                                 },
                             },
                         });
-                        return [3 /*break*/, 4];
-                    case 4: return [2 /*return*/];
+                        return [3 /*break*/, 5];
+                    case 5: return [2 /*return*/];
                 }
             });
         });
@@ -24318,30 +24812,37 @@ var Editor = /** @class */ (function () {
         configurable: true
     });
     Editor.prototype.onReady = function () {
-        var layout = this.configStore.config.layout;
-        if (layout === 'advanced') {
-            this.activeStore.selectTool(this.configStore.defaultTool);
-        }
-        if (this.configStore.config.forceCrop) {
-            var outputSize = this.transformToolStore.localOutputImageSize;
-            var outputRatio = outputSize.width / outputSize.height;
-            var ratios = this.transformToolStore.entityManager.items.map(function (transform) {
-                if (transform.ratio === '*') {
-                    return transform.ratio;
+        return __awaiter(this, void 0, void 0, function () {
+            var _a, layout, forceCrop, outputSize, outputRatio, ratios;
+            return __generator(this, function (_b) {
+                _a = this.configStore.config, layout = _a.layout, forceCrop = _a.forceCrop;
+                if (layout === 'advanced') {
+                    this.activeStore.selectTool(this.configStore.defaultTool);
                 }
-                if (transform.ratio) {
-                    return transform.ratio.toFixed(2);
+                if (forceCrop) {
+                    outputSize = this.transformToolStore.localOutputImageSize;
+                    outputRatio = outputSize.width / outputSize.height;
+                    ratios = this.transformToolStore.entityManager.items.map(function (transform) {
+                        if (transform.ratio === '*') {
+                            return transform.ratio;
+                        }
+                        if (transform.ratio) {
+                            return transform.ratio.toFixed(2);
+                        }
+                        return (transform.dimensions.x / transform.dimensions.y).toFixed(2);
+                    });
+                    if (ratios.indexOf('*') !== -1) {
+                        // eslint-disable-next-line no-console
+                        console.error('ForceCrop will not work if "*" is one of the ratios');
+                    }
+                    else if (ratios.indexOf(outputRatio.toFixed(2)) === -1) {
+                        this.activeStore.selectTool(exports.Tool.TRANSFORM);
+                    }
                 }
-                return (transform.dimensions.x / transform.dimensions.y).toFixed(2);
+                this.configStore.events.onEditorReady();
+                return [2 /*return*/];
             });
-            if (ratios.indexOf('*') !== -1) {
-                console.error('ForceCrop will not work if "*" is one of the ratios');
-            }
-            else if (ratios.indexOf(outputRatio.toFixed(2)) === -1) {
-                this.activeStore.selectTool(exports.Tool.TRANSFORM);
-            }
-        }
-        this.configStore.events.onEditorReady();
+        });
     };
     Editor.prototype.addSnapshot = function (state, type, description) {
         this.historyStore.addSnapshot(state, type, description);
@@ -24833,7 +25334,7 @@ var StickerToolStore = /** @class */ (function () {
     });
     Object.defineProperty(StickerToolStore.prototype, "categories", {
         get: function () {
-            return this.entityManager.categories;
+            return this.entityManager.getCategories(this.selectedCategoryIdentifier);
         },
         enumerable: true,
         configurable: true
@@ -25013,7 +25514,9 @@ var PhotoEditorSDKUIClass = /** @class */ (function () {
                 _this.editorApi = new EditorApi(config, _this.container);
                 ReactDOM__default.render(React__default.createElement(UI, { editor: _this.editorApi.editor }), _this.container);
                 _this.editorApi.editor.configStore.events.on(exports.UIEvent.EDITOR_READY, function () {
-                    _this.editorApi.emit(exports.UIEvent.EDITOR_READY);
+                    setTimeout(function () {
+                        _this.editorApi.emit(exports.UIEvent.EDITOR_READY);
+                    }, 0);
                     resolve(_this.editorApi);
                 });
             }
@@ -25057,7 +25560,7 @@ var UI = /** @class */ (function (_super) {
             editor: this.editor,
         };
         if (this.editor.configStore.config.layout === 'basic') {
-            new Promise(function (resolve) { resolve(require('./index-3d20832c.js')); }).then(function (_a) {
+            new Promise(function (resolve) { resolve(require('./index-8755f5ca.js')); }).then(function (_a) {
                 var BasicUI = _a.BasicUI;
                 _this.UIComponent = BasicUI;
                 _this.forceUpdate();
@@ -25151,7 +25654,7 @@ var PhotoEditorSDKUIComponent = /** @class */ (function (_super) {
             editor: _this.editor,
         };
         if (_this.editor.configStore.config.layout === 'basic') {
-            new Promise(function (resolve) { resolve(require('./index-3d20832c.js')); }).then(function (_a) {
+            new Promise(function (resolve) { resolve(require('./index-8755f5ca.js')); }).then(function (_a) {
                 var BasicUI = _a.BasicUI;
                 _this.UIComponent = BasicUI;
                 _this.forceUpdate();
@@ -26715,12 +27218,7 @@ var BaseCard = /** @class */ (function (_super) {
     BaseCard.prototype.render = function () {
         var _a = this.props, children = _a.children, label = _a.label, isActive = _a.isActive, isDisabled = _a.isDisabled, image = _a.image, style = _a.style, className = _a.className;
         var _b = this.state, left = _b.left, top = _b.top, display = _b.display;
-        var bgImage = isActive && image ? { backgroundImage: "url(" + image + ")" } : undefined;
-        var activeStyles = image && !isActive
-            ? {
-                backgroundImage: "url(" + image + ")",
-            }
-            : bgImage;
+        var activeStyles = image ? { backgroundImage: "url(" + image + ")" } : undefined;
         var baseCardProps = {
             onClick: this.onClick,
             onKeyDown: this.onKeyDown,
@@ -26738,11 +27236,11 @@ var BaseCard = /** @class */ (function (_super) {
 }(React__default.Component));
 var templateObject_1$7, templateObject_2$3, templateObject_3$1;
 
-var LabelWrapper = styled__default.div(templateObject_3$2 || (templateObject_3$2 = __makeTemplateObject(["\n  position: absolute;\n  bottom: 0px;\n  border-radius: ", "px;\n  font-family: '", "', sans-serif;\n  left: 0;\n  ", "\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  width: 100%;\n  text-align: center;\n  cursor: pointer;\n  .label {\n    left: 50%;\n    position: absolute;\n    transform: translateX(-50%);\n    top: 13px;\n    width: 100%;\n  }\n"], ["\n  position: absolute;\n  bottom: 0px;\n  border-radius: ", "px;\n  font-family: '", "', sans-serif;\n  left: 0;\n  ",
-    "\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  width: 100%;\n  text-align: center;\n  cursor: pointer;\n  .label {\n    left: 50%;\n    position: absolute;\n    transform: translateX(-50%);\n    top: 13px;\n    width: 100%;\n  }\n"])), function (props) { return props.theme.shape.radiusMedium; }, function (props) { return props.theme.typography.fontFamily; }, function (props) {
+var LabelWrapper = styled__default.div(templateObject_3$2 || (templateObject_3$2 = __makeTemplateObject(["\n &&& {\n  position: absolute;\n  bottom: 0px;\n  border-radius: ", "px;\n  left: 0;\n  ", "\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  width: 100%;\n  text-align: center;\n  cursor: pointer;\n  .label {\n    font-size: ", "px;\n    left: 50%;\n    position: absolute;\n    transform: translateX(-50%);\n    top: 13px;\n    width: 100%;\n  }\n }\n"], ["\n &&& {\n  position: absolute;\n  bottom: 0px;\n  border-radius: ", "px;\n  left: 0;\n  ",
+    "\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  width: 100%;\n  text-align: center;\n  cursor: pointer;\n  .label {\n    font-size: ", "px;\n    left: 50%;\n    position: absolute;\n    transform: translateX(-50%);\n    top: 13px;\n    width: 100%;\n  }\n }\n"])), function (props) { return props.theme.shape.radiusMedium; }, function (props) {
     return props.withBackground
         ? styled.css(templateObject_1$8 || (templateObject_1$8 = __makeTemplateObject(["\n          color: ", ";\n          height: 40px;\n          background: ", ";\n        "], ["\n          color: ", ";\n          height: 40px;\n          background: ", ";\n        "])), props.theme.card.labelForeground, props.theme.card.labelBackground) : styled.css(templateObject_2$4 || (templateObject_2$4 = __makeTemplateObject(["\n          color: ", ";\n          height: 32px;\n        "], ["\n          color: ", ";\n          height: 32px;\n        "])), props.theme.card.foreground);
-}, function (props) { return props.theme.measurements.fontSystem.label.size; }, function (props) { return props.theme.measurements.fontSystem.label.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.label.case; });
+}, function (props) { return props.theme.measurements.fontSystem.label.size; }, function (props) { return props.theme.measurements.fontSystem.label.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.label.case; }, function (props) { return props.theme.measurements.fontSystem.label.size; });
 var Caret = styled__default.div(templateObject_4$1 || (templateObject_4$1 = __makeTemplateObject(["\n  position: absolute;\n  top: 6px;\n  width: 0;\n  height: 0;\n  border-left: 5px solid transparent;\n  border-right: 5px solid transparent;\n  border-top: 5px solid ", ";\n  transform: rotate(", "deg);\n  display: inline-block;\n  transition-duration: 0.3s;\n  transition-timing-function: ease-in;\n"], ["\n  position: absolute;\n  top: 6px;\n  width: 0;\n  height: 0;\n  border-left: 5px solid transparent;\n  border-right: 5px solid transparent;\n  border-top: 5px solid ", ";\n  transform: rotate(", "deg);\n  display: inline-block;\n  transition-duration: 0.3s;\n  transition-timing-function: ease-in;\n"])), function (props) { return props.theme.card.labelForeground; }, function (props) { return props.rotation || 0; });
 var CaretPositionWrapper = styled__default.span(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n  position: relative;\n  padding-left: 10px;\n"], ["\n  position: relative;\n  padding-left: 10px;\n"])));
 var HiddenLabel = styled__default.div(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n  ", "\n"], ["\n  ", "\n"])), VisuallyHidden);
@@ -26767,16 +27265,16 @@ var States = {
 };
 var Animations = { ripple: ripple, scale: scale, slide: slide };
 
-var ContainedPrimaryButton = styled__default(ResponsiveButton)(templateObject_1$9 || (templateObject_1$9 = __makeTemplateObject(["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  margin-top: 3px;\n  margin-right: 10px;\n"], ["\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  margin-top: 3px;\n  margin-right: 10px;\n"])), function (props) { return props.theme.button.containedPrimaryBackground; }, function (props) { return props.theme.button.containedPrimaryForeground; }, function (props) { return props.theme.button.containedPrimaryBackground; });
+var ContainedPrimaryButton = styled__default(ResponsiveButton)(templateObject_1$9 || (templateObject_1$9 = __makeTemplateObject(["\n  &&& {\n    background: ", ";\n    color: ", ";\n    border: 1px solid ", ";\n    font-size: ", "px;\n    margin-top: 3px;\n    margin-right: 10px;\n    &.active,\n    &:active {\n      color: ", ";\n    }\n  }\n"], ["\n  &&& {\n    background: ", ";\n    color: ", ";\n    border: 1px solid ", ";\n    font-size: ", "px;\n    margin-top: 3px;\n    margin-right: 10px;\n    &.active,\n    &:active {\n      color: ", ";\n    }\n  }\n"])), function (props) { return props.theme.button.containedPrimaryBackground; }, function (props) { return props.theme.button.containedPrimaryForeground; }, function (props) { return props.theme.button.containedPrimaryBackground; }, function (props) { return props.theme.measurements.fontSystem.button1.size; }, function (props) { return props.theme.button.containedPrimaryForeground; });
 var templateObject_1$9;
 
-var OutlinedSecondaryButton = styled__default(ResponsiveButton)(templateObject_1$a || (templateObject_1$a = __makeTemplateObject(["\n  margin-top: 3px;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  height: 32px;\n"], ["\n  margin-top: 3px;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  height: 32px;\n"])), function (props) { return props.theme.button.outlinedSecondaryBackground; }, function (props) { return props.theme.button.outlinedSecondaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; });
+var OutlinedSecondaryButton = styled__default(ResponsiveButton)(templateObject_1$a || (templateObject_1$a = __makeTemplateObject(["\n  &&& {\n    margin-top: 3px;\n    background: ", ";\n    color: ", ";\n    border: 1px solid ", ";\n    font-size: ", "px;\n    height: 32px;\n  }\n"], ["\n  &&& {\n    margin-top: 3px;\n    background: ", ";\n    color: ", ";\n    border: 1px solid ", ";\n    font-size: ", "px;\n    height: 32px;\n  }\n"])), function (props) { return props.theme.button.outlinedSecondaryBackground; }, function (props) { return props.theme.button.outlinedSecondaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; }, function (props) { return props.theme.measurements.fontSystem.button1.size; });
 var templateObject_1$a;
 
-var TextSecondaryButton = styled__default(ResponsiveButton)(templateObject_1$b || (templateObject_1$b = __makeTemplateObject(["\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  color: ", ";\n  margin: 0 5px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"], ["\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  color: ", ";\n  margin: 0 5px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.button2.size; }, function (props) { return props.theme.measurements.fontSystem.button2.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.button2.case; }, function (props) { return props.theme.button.textSecondaryForeground; }, function (props) { return props.theme.button.textInactiveOpacity; });
+var TextSecondaryButton = styled__default(ResponsiveButton)(templateObject_1$b || (templateObject_1$b = __makeTemplateObject(["\n  &&& {\n    font-size: ", "px;\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    color: ", ";\n    margin: 0 5px;\n    span.disabled {\n      display: none;\n    }\n    &:disabled,\n    &.disabled {\n      opacity: ", ";\n    }\n  }\n"], ["\n  &&& {\n    font-size: ", "px;\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    color: ", ";\n    margin: 0 5px;\n    span.disabled {\n      display: none;\n    }\n    &:disabled,\n    &.disabled {\n      opacity: ", ";\n    }\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.button2.size; }, function (props) { return props.theme.measurements.fontSystem.button2.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.button2.case; }, function (props) { return props.theme.button.textSecondaryForeground; }, function (props) { return props.theme.button.textInactiveOpacity; });
 var templateObject_1$b;
 
-var Float = styled__default(BaseButton)(templateObject_1$c || (templateObject_1$c = __makeTemplateObject(["\n  width: 60px;\n  height: 60px;\n  background-color: gray;\n  border-radius: 50%;\n  position: absolute;\n  left: 50%;\n  transform: translateX(-50%);\n  z-index: ", ";\n  padding: 2px;\n"], ["\n  width: 60px;\n  height: 60px;\n  background-color: gray;\n  border-radius: 50%;\n  position: absolute;\n  left: 50%;\n  transform: translateX(-50%);\n  z-index: ", ";\n  padding: 2px;\n"])), function (props) { return props.theme.measurements.zIndex.button.float; });
+var Float = styled__default(BaseButton)(templateObject_1$c || (templateObject_1$c = __makeTemplateObject(["\n  width: 60px;\n  height: 60px;\n  background-color: gray;\n  border-radius: 50%;\n  position: absolute;\n  left: 50%;\n  transform: translateX(-50%);\n  z-index: ", ";\n  font-size: ", "px;\n  padding: 2px;\n"], ["\n  width: 60px;\n  height: 60px;\n  background-color: gray;\n  border-radius: 50%;\n  position: absolute;\n  left: 50%;\n  transform: translateX(-50%);\n  z-index: ", ";\n  font-size: ", "px;\n  padding: 2px;\n"])), function (props) { return props.theme.measurements.zIndex.button.float; }, function (props) { return props.theme.measurements.fontSystem.button1.size; });
 var Inner = styled__default.div(templateObject_2$5 || (templateObject_2$5 = __makeTemplateObject(["\n  height: 56px;\n  width: 56px;\n  border-radius: 50%;\n  background-color: ", ";\n"], ["\n  height: 56px;\n  width: 56px;\n  border-radius: 50%;\n  background-color: ", ";\n"])), function (props) { return props.theme.webcam.floatButton; });
 var FloatButton = function (props) {
     return (React__default.createElement(Float, exports.__assign({}, props),
@@ -26785,7 +27283,7 @@ var FloatButton = function (props) {
 var templateObject_1$c, templateObject_2$5;
 
 var ButtonGroup = styled__default.div(templateObject_1$d || (templateObject_1$d = __makeTemplateObject(["\n  display: inline-flex;\n"], ["\n  display: inline-flex;\n"])));
-var ButtonGroupItem = styled__default(ResponsiveButton)(templateObject_2$6 || (templateObject_2$6 = __makeTemplateObject(["\n  font-size: ", "px;\n  background: ", ";\n  color: ", ";\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  padding: 4px 10px;\n  position: relative;\n  height: 32px;\n  /* for safari */\n  margin: 0;\n  &:last-child:after {\n    opacity: 0;\n  }\n"], ["\n  font-size: ", "px;\n  background: ", ";\n  color: ", ";\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  padding: 4px 10px;\n  position: relative;\n  height: 32px;\n  /* for safari */\n  margin: 0;\n  &:last-child:after {\n    opacity: 0;\n  }\n"
+var ButtonGroupItem = styled__default(ResponsiveButton)(templateObject_2$6 || (templateObject_2$6 = __makeTemplateObject(["\n  &&& {\n    font-size: ", "px;\n    background: ", ";\n    color: ", ";\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    padding: 4px 10px;\n    position: relative;\n    height: 32px;\n    /* for safari */\n    margin: 0;\n    &:last-child:after {\n      opacity: 0;\n    }\n  }\n"], ["\n  &&& {\n    font-size: ", "px;\n    background: ", ";\n    color: ", ";\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    padding: 4px 10px;\n    position: relative;\n    height: 32px;\n    /* for safari */\n    margin: 0;\n    &:last-child:after {\n      opacity: 0;\n    }\n  }\n"
     /**
      * Edit, Delele Duplicate buttons on canvas
      */
@@ -27069,8 +27567,9 @@ var Webcam$1 = inject('active', 'canvas', 'modal', 'editor')(observer(WebcamVide
 
 var WindowResizeComponent = /** @class */ (function (_super) {
     __extends(WindowResizeComponent, _super);
-    function WindowResizeComponent() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
+    function WindowResizeComponent(props) {
+        var _this = _super.call(this, props) || this;
+        _this.wrapperElementRef = null;
         _this.timeout = null;
         _this.updateDimensions = function (render) {
             if (render === void 0) { render = true; }
@@ -27086,17 +27585,18 @@ var WindowResizeComponent = /** @class */ (function (_super) {
         };
         _this.update = function (render) {
             if (render === void 0) { render = true; }
+            var element = _this.wrapperElementRef.current;
             _this.props.canvas.saveDimensions({
-                width: (_this.wrapperElement && _this.wrapperElement.clientWidth) || 0,
-                height: (_this.wrapperElement && _this.wrapperElement.clientHeight) || 0,
+                width: (element && element.clientWidth) || 0,
+                height: (element && element.clientHeight) || 0,
                 render: render,
             });
         };
+        _this.wrapperElementRef = React__default.createRef();
         return _this;
     }
     WindowResizeComponent.prototype.componentDidMount = function () {
         var _this = this;
-        this.wrapperElement = document.getElementById('CanvasContainer');
         this.updateDimensions(false);
         window.addEventListener('resize', function () { return _this.updateDimensions(true); });
     };
@@ -27108,13 +27608,13 @@ var WindowResizeComponent = /** @class */ (function (_super) {
         }
     };
     WindowResizeComponent.prototype.render = function () {
-        return React__default.createElement(CanvasUIComponents.Container, { id: "CanvasContainer" }, this.props.children);
+        return (React__default.createElement(CanvasUIComponents.Container, { id: "CanvasContainer", ref: this.wrapperElementRef }, this.props.children));
     };
     return WindowResizeComponent;
 }(React.Component));
 var Window = inject('canvas')(observer(WindowResizeComponent));
 
-var AppContainer = styled__default.div(templateObject_1$w || (templateObject_1$w = __makeTemplateObject(["\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  background: ", ";\n  color: ", ";\n  display: flex;\n  flex-direction: row;\n  font-family: '", "', sans-serif;\n  overflow-y: hidden;\n  overflow-x: hidden;\n  -webkit-touch-callout: none;\n  user-select: none;\n  * {\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n  }\n"], ["\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  background: ", ";\n  color: ", ";\n  display: flex;\n  flex-direction: row;\n  font-family: '", "', sans-serif;\n  overflow-y: hidden;\n  overflow-x: hidden;\n  -webkit-touch-callout: none;\n  user-select: none;\n  * {\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n  }\n"])), function (props) { return props.theme.background; }, function (props) { return props.theme.foreground; }, function (props) { return props.theme.typography.fontFamily; });
+var AppContainer = styled__default.div(templateObject_1$w || (templateObject_1$w = __makeTemplateObject(["\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  background: ", ";\n  color: ", ";\n  display: flex;\n  flex-direction: row;\n  overflow-y: hidden;\n  overflow-x: hidden;\n  -webkit-touch-callout: none;\n  user-select: none;\n  * {\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n    font-family: '", "', sans-serif;\n    font-size: inherit;\n    line-height: normal;\n    color: inherit;\n  }\n"], ["\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  background: ", ";\n  color: ", ";\n  display: flex;\n  flex-direction: row;\n  overflow-y: hidden;\n  overflow-x: hidden;\n  -webkit-touch-callout: none;\n  user-select: none;\n  * {\n    -webkit-font-smoothing: antialiased;\n    -moz-osx-font-smoothing: grayscale;\n    font-family: '", "', sans-serif;\n    font-size: inherit;\n    line-height: normal;\n    color: inherit;\n  }\n"])), function (props) { return props.theme.background; }, function (props) { return props.theme.foreground; }, function (props) { return props.theme.typography.fontFamily; });
 AppContainer.defaultProps = { theme: defaultStyledTheme };
 var templateObject_1$w;
 
@@ -27126,13 +27626,13 @@ var templateObject_1$x, templateObject_2$a, templateObject_3$7;
 var ColorWrapper = styled__default.button.attrs({
     type: 'button',
 })(templateObject_1$y || (templateObject_1$y = __makeTemplateObject(["\n  position: relative;\n  background: transparent;\n  border: none;\n  height: ", "px;\n  width: ", "px;\n  margin: 1px;\n  padding: 0;\n  cursor: pointer;\n  border-radius: ", "px;\n  &:hover,\n  &.hover {\n    opacity: 0.7;\n  }\n  ", "\n  &:disabled {\n    opacity: ", ";\n    cursor: default;\n  }\n"], ["\n  position: relative;\n  background: transparent;\n  border: none;\n  height: ", "px;\n  width: ", "px;\n  margin: 1px;\n  padding: 0;\n  cursor: pointer;\n  border-radius: ", "px;\n  &:hover,\n  &.hover {\n    opacity: 0.7;\n  }\n  ", "\n  &:disabled {\n    opacity: ", ";\n    cursor: default;\n  }\n"])), function (props) { return props.theme.measurements.color.colorItem.button.size; }, function (props) { return props.theme.measurements.color.colorItem.button.size; }, function (props) { return props.theme.shape.radiusSmall; }, States.Focused, function (props) { return props.theme.selectColor.inactiveOpacity; });
-var BackgroundStyle = styled.css(templateObject_2$b || (templateObject_2$b = __makeTemplateObject(["\n  position: absolute;\n  top: 0;\n  left: 0;\n  height: ", "px;\n  width: ", "px;\n  box-sizing: border-box;\n"], ["\n  position: absolute;\n  top: 0;\n  left: 0;\n  height: ", "px;\n  width: ", "px;\n  box-sizing: border-box;\n"])), function (props) { return props.theme.measurements.color.colorItem.button.size; }, function (props) { return props.theme.measurements.color.colorItem.button.size; });
+var BackgroundStyle = styled.css(templateObject_2$b || (templateObject_2$b = __makeTemplateObject(["\n  position: absolute;\n  top: 0;\n  left: 0;\n  height: ", "px;\n  width: ", "px;\n  box-sizing: border-box;\n  pointer-events: none;\n"], ["\n  position: absolute;\n  top: 0;\n  left: 0;\n  height: ", "px;\n  width: ", "px;\n  box-sizing: border-box;\n  pointer-events: none;\n"])), function (props) { return props.theme.measurements.color.colorItem.button.size; }, function (props) { return props.theme.measurements.color.colorItem.button.size; });
 var Background = styled__default.div.attrs(function (props) { return ({
     style: { background: props.backgroundColor },
 }); })(templateObject_3$8 || (templateObject_3$8 = __makeTemplateObject(["\n  ", "\n  border-radius: ", "px;\n  border: 2px solid transparent;\n  transition: border-color 300ms ease-in-out;\n  &.active {\n    border-color: ", ";\n  }\n"], ["\n  ", "\n  border-radius: ", "px;\n  border: 2px solid transparent;\n  transition: border-color 300ms ease-in-out;\n  &.active {\n    border-color: ", ";\n  }\n"])), BackgroundStyle, function (props) { return props.theme.shape.radiusSmall; }, function (props) { return props.theme.selectColor.activeBorderColor; });
 var TiledBackground = styled__default.div(templateObject_4$5 || (templateObject_4$5 = __makeTemplateObject(["\n  ", "\n  border-radius: ", "px;\n  background-image: url(", ");\n"], ["\n  ", "\n  border-radius: ", "px;\n  background-image: url(", ");\n"])), BackgroundStyle, function (props) { return props.theme.shape.radiusSmall + 1; }, function (props) { return props.url; });
-var ActiveOverlay = styled__default.div(templateObject_5$4 || (templateObject_5$4 = __makeTemplateObject(["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  position: absolute;\n  top: 0;\n  height: ", "px;\n  width: ", "px;\n  content: ' ';\n"], ["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  position: absolute;\n  top: 0;\n  height: ", "px;\n  width: ", "px;\n  content: ' ';\n"])), function (props) { return props.theme.measurements.color.colorItem.button.size; }, function (props) { return props.theme.measurements.color.colorItem.button.size; });
-var Dot = styled__default.span(templateObject_6$3 || (templateObject_6$3 = __makeTemplateObject(["\n  display: inline-block;\n  height: 2px;\n  width: 2px;\n  border-radius: 50%;\n  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.6);\n  background: rgba(255, 255, 255, 0.87);\n  margin: 1px;\n"], ["\n  display: inline-block;\n  height: 2px;\n  width: 2px;\n  border-radius: 50%;\n  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.6);\n  background: rgba(255, 255, 255, 0.87);\n  margin: 1px;\n"])));
+var ActiveOverlay = styled__default.div(templateObject_5$4 || (templateObject_5$4 = __makeTemplateObject(["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  position: absolute;\n  top: 0;\n  height: ", "px;\n  width: ", "px;\n  content: ' ';\n  pointer-events: none;\n"], ["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  position: absolute;\n  top: 0;\n  height: ", "px;\n  width: ", "px;\n  content: ' ';\n  pointer-events: none;\n"])), function (props) { return props.theme.measurements.color.colorItem.button.size; }, function (props) { return props.theme.measurements.color.colorItem.button.size; });
+var Dot = styled__default.span(templateObject_6$3 || (templateObject_6$3 = __makeTemplateObject(["\n  display: inline-block;\n  height: 2px;\n  width: 2px;\n  border-radius: 50%;\n  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.6);\n  background: rgba(255, 255, 255, 0.87);\n  margin: 1px;\n  pointer-events: none;\n"], ["\n  display: inline-block;\n  height: 2px;\n  width: 2px;\n  border-radius: 50%;\n  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.6);\n  background: rgba(255, 255, 255, 0.87);\n  margin: 1px;\n  pointer-events: none;\n"])));
 var ColorItem = function (_a) {
     var isActive = _a.isActive, onClick = _a.onClick, color = _a.color, label = _a.label, isDisabled = _a.isDisabled, config = _a.config;
     var onKeyDown = function (e) {
@@ -27147,7 +27647,7 @@ var ColorItem = function (_a) {
     return (React__default.createElement(ColorWrapper, { className: isActive ? 'active' : '', disabled: isDisabled, onClick: handleOnClick, onKeyDown: onKeyDown, "aria-label": label },
         React__default.createElement(TiledBackground, { url: url }),
         React__default.createElement(Background, { className: isActive ? 'active' : '', backgroundColor: color }),
-        isActive && (React__default.createElement(ActiveOverlay, { className: "colorItemActive" },
+        isActive && (React__default.createElement(ActiveOverlay, null,
             React__default.createElement(Dot, null),
             React__default.createElement(Dot, null),
             React__default.createElement(Dot, null)))));
@@ -27219,7 +27719,7 @@ Spacer.defaultProps = { count: 1 };
 var templateObject_1$C;
 
 var HiddenLabel$1 = styled__default.label(templateObject_1$D || (templateObject_1$D = __makeTemplateObject(["\n  ", "\n"], ["\n  ", "\n"])), States.VisuallyHidden);
-var InputLabel = styled__default.label(templateObject_2$f || (templateObject_2$f = __makeTemplateObject(["\n  display: block;\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  color: ", ";\n  &.disabled {\n    opacity: ", ";\n    cursor: default;\n    pointer-events: none;\n  }\n"], ["\n  display: block;\n  font-size: ", "px;\n  letter-spacing: ", "px;\n  text-transform: ", ";\n  color: ", ";\n  &.disabled {\n    opacity: ", ";\n    cursor: default;\n    pointer-events: none;\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.body.size; }, function (props) { return props.theme.measurements.fontSystem.body.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.body.case; }, function (props) { return props.theme.toolControlBar.inputLabelForeground; }, function (props) { return props.theme.toolControlBar.inputLabelInactiveOpacity; });
+var InputLabel = styled__default.label(templateObject_2$f || (templateObject_2$f = __makeTemplateObject(["\n  &&& {\n    display: block;\n    font-size: ", "px;\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    color: ", ";\n    margin: 0;\n    &.disabled {\n      opacity: ", ";\n      cursor: default;\n      pointer-events: none;\n    }\n  }\n"], ["\n  &&& {\n    display: block;\n    font-size: ", "px;\n    letter-spacing: ", "px;\n    text-transform: ", ";\n    color: ", ";\n    margin: 0;\n    &.disabled {\n      opacity: ", ";\n      cursor: default;\n      pointer-events: none;\n    }\n  }\n"])), function (props) { return props.theme.measurements.fontSystem.body.size; }, function (props) { return props.theme.measurements.fontSystem.body.letterSpacing; }, function (props) { return props.theme.measurements.fontSystem.body.case; }, function (props) { return props.theme.toolControlBar.inputLabelForeground; }, function (props) { return props.theme.toolControlBar.inputLabelInactiveOpacity; });
 var Label = function (_a) {
     var name = _a.name, show = _a.show, styles = _a.styles, isDisabled = _a.isDisabled, className = _a.className;
     var LabelComponent = show ? InputLabel : HiddenLabel$1;
@@ -27388,6 +27888,7 @@ var Text = styled__default(NummericInput)(templateObject_6$5 || (templateObject_
      * on every MouseUp or TouchEnd a history snapshot will be added
      */
 ])));
+var random = uuid();
 // inputActive State is not being used in render but it's used in inputValue calculations
 // eslint-disable:react/no-unused-state
 var Slider = /** @class */ (function (_super) {
@@ -27418,7 +27919,7 @@ var Slider = /** @class */ (function (_super) {
     }
     Slider.prototype.render = function () {
         var _a = this.props, value = _a.value, snap = _a.snap, min = _a.min, max = _a.max, divider = _a.divider, suffix = _a.suffix, decimal = _a.decimal, showLabel = _a.showLabel, showInput = _a.showInput, style = _a.style, centerSlider = _a.centerSlider, adjust = _a.adjust, name = _a.name, isDisabled = _a.isDisabled, step = _a.step, ariaHidden = _a["aria-hidden"], onMouseUp = _a.onMouseUp, onTouchEnd = _a.onTouchEnd, className = _a.className;
-        var id = name.replace(' ', '-');
+        var id = name.replace(' ', '-') + random;
         var snapOption = typeof snap === 'number' && (React__default.createElement("datalist", { id: id + "-list" },
             React__default.createElement("option", { value: snap })));
         var inputValue = "" + (value * divider).toFixed(decimal) + suffix;
@@ -28812,10 +29313,11 @@ var Container$3 = styled__default(CanvasUIComponents.Controls.Container)(templat
 var Cursor = styled__default.div(templateObject_2$s || (templateObject_2$s = __makeTemplateObject(["\n  position: absolute;\n  width: 20px;\n  height: 20px;\n  transform: translate(-50%, -50%);\n  border-radius: 50%;\n  border-width: 2px;\n  border-style: solid;\n  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 1);\n"], ["\n  position: absolute;\n  width: 20px;\n  height: 20px;\n  transform: translate(-50%, -50%);\n  border-radius: 50%;\n  border-width: 2px;\n  border-style: solid;\n  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 1);\n"])));
 var CursorComponent = /** @class */ (function (_super) {
     __extends(CursorComponent, _super);
-    function CursorComponent() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
+    function CursorComponent(props) {
+        var _this = _super.call(this, props) || this;
         _this.INITIAL_POSITION = { x: undefined, y: undefined };
         _this.state = exports.__assign({}, _this.INITIAL_POSITION, { isDrawing: false });
+        _this.containerElementRef = null;
         _this.getCursorCoordinates = function (e) {
             var clientX = 0;
             var clientY = 0;
@@ -28832,7 +29334,7 @@ var CursorComponent = /** @class */ (function (_super) {
                 clientX = ev.clientX;
                 clientY = ev.clientY;
             }
-            var rect = _this.containerElement.getBoundingClientRect();
+            var rect = _this.containerElementRef.current.getBoundingClientRect();
             var x = clientX - rect.left;
             var y = clientY - rect.top;
             return { x: x, y: y, height: rect.height, width: rect.width };
@@ -28909,10 +29411,10 @@ var CursorComponent = /** @class */ (function (_super) {
             }
             return null;
         };
+        _this.containerElementRef = React__default.createRef();
         return _this;
     }
     CursorComponent.prototype.componentDidMount = function () {
-        this.containerElement = document.getElementById('CursorContainer');
         document.addEventListener('mouseup', this.stop, false);
         document.addEventListener('touchend', this.stop, { passive: false });
     };
@@ -28928,7 +29430,7 @@ var CursorComponent = /** @class */ (function (_super) {
         configurable: true
     });
     CursorComponent.prototype.render = function () {
-        return (React__default.createElement(Container$3, { id: "CursorContainer", onMouseMove: this.draw, onTouchMove: this.touchDraw, onMouseDown: this.start, onTouchStart: this.start, onMouseOut: this.mouseOut, onTouchEnd: this.touchEnd }, this.getCursor()));
+        return (React__default.createElement(Container$3, { ref: this.containerElementRef, onMouseMove: this.draw, onTouchMove: this.touchDraw, onMouseDown: this.start, onTouchStart: this.start, onMouseOut: this.mouseOut, onTouchEnd: this.touchEnd }, this.getCursor()));
     };
     return CursorComponent;
 }(React__default.Component));
@@ -29279,8 +29781,8 @@ var TwitterCategory = function () { return (React__default.createElement("svg", 
         React__default.createElement("path", { fill: "currentColor", d: "M36 17.305c-.892.402-1.843.668-2.835.797a4.997 4.997 0 002.165-2.79 9.685 9.685 0 01-3.12 1.222 4.874 4.874 0 00-3.595-1.596c-2.723 0-4.916 2.267-4.916 5.047 0 .4.032.785.113 1.151-4.09-.205-7.71-2.215-10.141-5.278a5.18 5.18 0 00-.673 2.55c0 1.748.877 3.297 2.185 4.194a4.766 4.766 0 01-2.223-.621v.055c0 2.452 1.705 4.49 3.942 4.958-.4.113-.837.167-1.29.167-.315 0-.633-.019-.931-.087.637 1.999 2.446 3.468 4.597 3.516a9.73 9.73 0 01-6.1 2.152c-.404 0-.791-.018-1.178-.07a13.601 13.601 0 007.548 2.266c9.054 0 14.004-7.693 14.004-14.36 0-.224-.008-.439-.018-.653A9.958 9.958 0 0036 17.305z" })))); };
 
 var Custom = function (_a) {
-    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b;
-    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: "32", height: "32", viewBox: "0 0 32 32" },
+    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.width, width = _c === void 0 ? '32px' : _c, _d = _a.height, height = _d === void 0 ? '32px' : _d;
+    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 32 32" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", { fill: highlight, transform: "translate(-8 -8)" },
                 React__default.createElement("g", { transform: "translate(8 8)" },
@@ -29312,8 +29814,8 @@ var Custom = function (_a) {
 };
 
 var Square = function (_a) {
-    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.mask, mask = _c === void 0 ? '#fff' : _c;
-    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", xmlnsXlink: "http://www.w3.org/1999/xlink", width: "32", height: "32", viewBox: "0 0 32 32" },
+    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.mask, mask = _c === void 0 ? '#fff' : _c, _d = _a.width, width = _d === void 0 ? '32px' : _d, _e = _a.height, height = _e === void 0 ? '32px' : _e;
+    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", xmlnsXlink: "http://www.w3.org/1999/xlink", width: width, height: height, viewBox: "0 0 32 32" },
         React__default.createElement("defs", null,
             React__default.createElement("rect", { id: "square-icon", width: "32", height: "32", x: "0.92", y: "0.707", rx: "1" })),
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
@@ -29325,40 +29827,40 @@ var Square = function (_a) {
 };
 
 var FourByThree = function (_a) {
-    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b;
-    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: "42", height: "32", viewBox: "0 0 42 32" },
+    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.width, width = _c === void 0 ? '32px' : _c, _d = _a.height, height = _d === void 0 ? '48px' : _d;
+    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 42 32" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", { fill: highlight, transform: "translate(-3 -8)" },
                 React__default.createElement("rect", { width: "42", height: "32", x: "3", y: "8", rx: "0.5" })))));
 };
 
 var ThreeByFour = function (_a) {
-    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b;
-    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: "32", height: "42", viewBox: "0 0 32 42" },
+    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.width, width = _c === void 0 ? '32px' : _c, _d = _a.height, height = _d === void 0 ? '42px' : _d;
+    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 32 42" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", { fill: highlight, transform: "translate(-8 -3)" },
                 React__default.createElement("rect", { width: "42", height: "32", x: "3", y: "8", rx: "0.5", transform: "rotate(90 24 24)" })))));
 };
 
 var SixteenByNine = function (_a) {
-    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b;
-    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: "26", height: "46", viewBox: "0 0 26 46" },
+    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.width, width = _c === void 0 ? '26px' : _c, _d = _a.height, height = _d === void 0 ? '46px' : _d;
+    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 26 46" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", { fill: highlight, transform: "translate(-11 -1)" },
                 React__default.createElement("path", { d: "M1 11.496A.5.5 0 011.5 11h45a.5.5 0 01.5.496v25.008a.5.5 0 01-.5.496h-45a.5.5 0 01-.5-.496V11.496z" })))));
 };
 
 var NineBySixteen = function (_a) {
-    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b;
-    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: "26", height: "46", viewBox: "0 0 26 46" },
+    var _b = _a.highlight, highlight = _b === void 0 ? '#565656' : _b, _c = _a.width, width = _c === void 0 ? '26px' : _c, _d = _a.height, height = _d === void 0 ? '46px' : _d;
+    return (React__default.createElement("svg", { className: "common-crop-thumbnail", xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 26 46" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", { fill: highlight, transform: "translate(-11 -1)" },
                 React__default.createElement("path", { d: "M1 11.496A.5.5 0 011.5 11h45a.5.5 0 01.5.496v25.008a.5.5 0 01-.5.496h-45a.5.5 0 01-.5-.496V11.496z", transform: "rotate(90 24 24)" })))));
 };
 
 var FacebookPost = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "28", height: "3", x: "12", y: "41", fill: main, rx: "0.5", transform: "matrix(-1 0 0 1 52 0)" }),
             React__default.createElement("rect", { width: "34", height: "28", x: "7", y: "8", fill: highlight, rx: "0.5", transform: "matrix(1 0 0 -1 0 44)" }),
@@ -29370,8 +29872,8 @@ var FacebookPost = function (_a) {
 };
 
 var FacebookProfile = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", null,
                 React__default.createElement("path", { fill: main, d: "M42 5a1 1 0 011 1v13a1 1 0 01-1 1H6a1 1 0 01-1-1V6a1 1 0 011-1h36zM21.505 18h-2.01a.494.494 0 00-.495.5c0 .268.222.5.495.5h2.01c.28 0 .495-.224.495-.5l-.008-.088a.503.503 0 00-.487-.412zm8.004 0h-5.018a.5.5 0 000 1h5.018a.5.5 0 00.491-.5l-.008-.088A.5.5 0 0029.51 18z" }),
@@ -29383,8 +29885,8 @@ var FacebookProfile = function (_a) {
 };
 
 var FacebookTitle = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("g", { transform: "translate(5 5)" },
                 React__default.createElement("path", { fill: highlight, d: "M37 0a1 1 0 011 1v13a1 1 0 01-1 1H1a1 1 0 01-1-1V1a1 1 0 011-1h36zM16.505 13h-2.01a.494.494 0 00-.495.5c0 .268.222.5.495.5h2.01c.28 0 .495-.224.495-.5l-.008-.088a.503.503 0 00-.487-.412zm8.004 0h-5.018a.5.5 0 000 1h5.018a.5.5 0 00.491-.5l-.008-.088A.5.5 0 0024.51 13z" }),
@@ -29396,8 +29898,8 @@ var FacebookTitle = function (_a) {
 };
 
 var InstagramLandscape = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "26", height: "7", x: "7", y: "18", fill: main, rx: "1" }),
             React__default.createElement("rect", { width: "9", height: "7", x: "34", y: "11", fill: main, rx: "1" }),
@@ -29408,8 +29910,8 @@ var InstagramLandscape = function (_a) {
 };
 
 var InstagramPortrait = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "26", height: "7", x: "7", y: "34", fill: main, rx: "1" }),
             React__default.createElement("rect", { width: "26", height: "32", x: "7", y: "5", fill: highlight, rx: "1" }),
@@ -29420,8 +29922,8 @@ var InstagramPortrait = function (_a) {
 };
 
 var InstagramSquare = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "26", height: "7", x: "7", y: "28", fill: main, rx: "1" }),
             React__default.createElement("rect", { width: "26", height: "26", x: "7", y: "5", fill: highlight, rx: "1" }),
@@ -29432,16 +29934,16 @@ var InstagramSquare = function (_a) {
 };
 
 var InstagramStory = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "20", height: "34", x: "14", y: "10", fill: highlight, rx: "1.5" }),
             React__default.createElement("rect", { width: "3", height: "3", x: "14", y: "5", fill: main, rx: "1" }))));
 };
 
 var TwitterPost = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.shadow, shadow = _d === void 0 ? '#333333' : _d;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.shadow, shadow = _d === void 0 ? '#333333' : _d, _e = _a.width, width = _e === void 0 ? '48px' : _e, _f = _a.height, height = _f === void 0 ? '48px' : _f;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("defs", null,
             React__default.createElement("filter", { id: "twitter-post-icon", width: "166.7%", height: "166.7%", x: "-33.3%", y: "-33.3%", filterUnits: "objectBoundingBox" },
                 React__default.createElement("feGaussianBlur", { in: "SourceGraphic", stdDeviation: "1" }))),
@@ -29458,8 +29960,8 @@ var TwitterPost = function (_a) {
 };
 
 var TwitterProfile = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "38", height: "15", x: "5", y: "5", fill: main, rx: "0.5" }),
             React__default.createElement("rect", { width: "11", height: "1", x: "5", y: "24", fill: main, rx: "0.5" }),
@@ -29472,8 +29974,8 @@ var TwitterProfile = function (_a) {
 };
 
 var TwitterTitle = function (_a) {
-    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c;
-    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: "48", height: "48", viewBox: "0 0 48 48" },
+    var _b = _a.main, main = _b === void 0 ? '#424242' : _b, _c = _a.highlight, highlight = _c === void 0 ? '#565656' : _c, _d = _a.width, width = _d === void 0 ? '48px' : _d, _e = _a.height, height = _e === void 0 ? '48px' : _e;
+    return (React__default.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: width, height: height, viewBox: "0 0 48 48" },
         React__default.createElement("g", { fill: "none", fillRule: "evenodd", stroke: "none", strokeWidth: "1" },
             React__default.createElement("rect", { width: "38", height: "15", x: "5", y: "5", fill: highlight, rx: "0.5" }),
             React__default.createElement("rect", { width: "11", height: "1", x: "5", y: "24", fill: main, rx: "0.5" }),
@@ -29939,10 +30441,11 @@ var Container$4 = styled__default(CanvasUIComponents.Controls.Container)(templat
 }, function (props) { return props.theme.measurements.zIndex.canvas.crop.dragImage; });
 var DragImage = /** @class */ (function (_super) {
     __extends(DragImage, _super);
-    function DragImage() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
+    function DragImage(props) {
+        var _this = _super.call(this, props) || this;
         _this.INITIAL_POSITION = { x: undefined, y: undefined };
         _this.state = exports.__assign({}, _this.INITIAL_POSITION, { isDragging: false });
+        _this.containerRef = null;
         _this.getCursorCoordinates = function (e) {
             var clientX = 0;
             var clientY = 0;
@@ -29959,7 +30462,7 @@ var DragImage = /** @class */ (function (_super) {
                 clientX = ev.clientX;
                 clientY = ev.clientY;
             }
-            var rect = _this.container.getBoundingClientRect();
+            var rect = _this.containerRef.current.getBoundingClientRect();
             var x = clientX - rect.left;
             var y = clientY - rect.top;
             return { x: x, y: y };
@@ -30005,10 +30508,10 @@ var DragImage = /** @class */ (function (_super) {
                 _this.setState(exports.__assign({}, _this.INITIAL_POSITION, { isDragging: false }));
             }
         };
+        _this.containerRef = React__default.createRef();
         return _this;
     }
     DragImage.prototype.componentDidMount = function () {
-        this.container = document.getElementById('DragImage');
         document.addEventListener('mouseup', this.stop, false);
         document.addEventListener('touchend', this.stop, { passive: true });
     };
@@ -30024,7 +30527,7 @@ var DragImage = /** @class */ (function (_super) {
         configurable: true
     });
     DragImage.prototype.render = function () {
-        return (React__default.createElement(Container$4, { id: "DragImage", onMouseMove: this.move, onTouchMove: this.move, onMouseDown: this.drag, onTouchStart: this.touchDrag, onMouseUp: this.stop, onTouchEnd: this.touchEnd, activeCursor: this.scale.canDrag }));
+        return (React__default.createElement(Container$4, { ref: this.containerRef, onMouseMove: this.move, onTouchMove: this.move, onMouseDown: this.drag, onTouchStart: this.touchDrag, onMouseUp: this.stop, onTouchEnd: this.touchEnd, activeCursor: this.scale.canDrag }));
     };
     return DragImage;
 }(React__default.Component));
@@ -30635,8 +31138,9 @@ var SpriteComponent = inject('sprite', 'active', 'snapping', 'config')(observer(
 
 var CanvasControls$1 = /** @class */ (function (_super) {
     __extends(CanvasControls, _super);
-    function CanvasControls() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
+    function CanvasControls(props) {
+        var _this = _super.call(this, props) || this;
+        _this.containerElementRef = null;
         _this.getControls = function (children) {
             switch (_this.props.active.tool) {
                 case exports.Tool.FOCUS:
@@ -30667,7 +31171,7 @@ var CanvasControls$1 = /** @class */ (function (_super) {
                     clientX = ev.touches[0].clientX;
                     clientY = ev.touches[0].clientY;
                 }
-                var rect = _this.containerElement.getBoundingClientRect();
+                var rect = _this.containerElementRef.current.getBoundingClientRect();
                 var x = clientX - rect.left;
                 var y = clientY - rect.top;
                 _this.props.canvas.getContainersAtPreviewPoint({ x: x, y: y });
@@ -30678,11 +31182,9 @@ var CanvasControls$1 = /** @class */ (function (_super) {
                 _this.props.sprite.selectLast();
             }
         };
+        _this.containerElementRef = React__default.createRef();
         return _this;
     }
-    CanvasControls.prototype.componentDidMount = function () {
-        this.containerElement = document.getElementById('CanvasContainerClick');
-    };
     CanvasControls.prototype.render = function () {
         var children = this.props.children;
         var canvasSize = this.props.canvas.canvasSize;
@@ -30690,7 +31192,7 @@ var CanvasControls$1 = /** @class */ (function (_super) {
             height: canvasSize.height,
             width: canvasSize.width,
         };
-        return (React__default.createElement(CanvasUIComponents.Controls.Wrapper, exports.__assign({ "aria-hidden": true, id: "CanvasContainerClick", onClick: this.canvasClicked, onKeyDown: this.onKeyDown }, styles),
+        return (React__default.createElement(CanvasUIComponents.Controls.Wrapper, exports.__assign({ "aria-hidden": true, ref: this.containerElementRef, onClick: this.canvasClicked, onKeyDown: this.onKeyDown }, styles),
             children,
             this.getControls(React__default.createElement(DragImage$1, null))));
     };
@@ -30768,17 +31270,20 @@ var templateObject_1$12, templateObject_2$z, templateObject_3$l, templateObject_
 
 var CanvasContainerComponent = /** @class */ (function (_super) {
     __extends(CanvasContainerComponent, _super);
-    function CanvasContainerComponent() {
-        return _super !== null && _super.apply(this, arguments) || this;
+    function CanvasContainerComponent(props) {
+        var _this = _super.call(this, props) || this;
+        _this.previewCanvasRef = null;
+        _this.previewCanvasRef = React__default.createRef();
+        return _this;
     }
     CanvasContainerComponent.prototype.componentDidMount = function () {
-        var element = document.getElementById('PreviewCanvas');
+        var element = this.previewCanvasRef.current;
         this.props.canvas.setCanvasElement(element);
     };
     CanvasContainerComponent.prototype.render = function () {
         return (React__default.createElement(Window, null,
             this.props.active.isWebcam ? React__default.createElement(Webcam$1, null) : null,
-            React__default.createElement(CanvasUIComponents.Element, { "aria-label": "Canvas", id: "PreviewCanvas" }),
+            React__default.createElement(CanvasUIComponents.Element, { ref: this.previewCanvasRef, "aria-label": "Canvas" }),
             React__default.createElement(CanvasControls$2, null,
                 React__default.createElement(Guides$1, null))));
     };
@@ -31072,7 +31577,7 @@ var ColorList = /** @class */ (function (_super) {
             var rgbColor = colorList.find(function (c) { return c.identifier === identifier; });
             if (activeColor === rgbColor.identifier && !showColorPicker) {
                 var index = colorList.findIndex(function (namedColor) { return namedColor.identifier === identifier; });
-                new Promise(function (resolve) { resolve(require('./index-d3e35335.js')); }).then(function (_a) {
+                new Promise(function (resolve) { resolve(require('./index-bf4666f0.js')); }).then(function (_a) {
                     var ColorPicker = _a.ColorPicker;
                     _this.UIComponent = ColorPicker;
                     _this.forceUpdate();
@@ -31126,7 +31631,7 @@ var ColorList = /** @class */ (function (_super) {
             _this.setState({ showColorPicker: false });
         };
         _this.getColorPicker = function () {
-            var _a = _this.props, activeColor = _a.activeColor, labelsColor = _a.labelsColor, colorPickerDirection = _a.colorPickerDirection, onAddSnapshot = _a.onAddSnapshot;
+            var _a = _this.props, parentId = _a.parentId, activeColor = _a.activeColor, labelsColor = _a.labelsColor, colorPickerDirection = _a.colorPickerDirection, onAddSnapshot = _a.onAddSnapshot;
             var _b = _this.state, showColorPicker = _b.showColorPicker, arrowOffset = _b.arrowOffset, colorList = _b.colorList;
             if (!_this.UIComponent) {
                 return null;
@@ -31136,7 +31641,7 @@ var ColorList = /** @class */ (function (_super) {
                 var identifier = _a.identifier;
                 return identifier === activeColor;
             })[0].colorString;
-            return (React__default.createElement(ColorPicker, { color: color, show: showColorPicker, direction: colorPickerDirection, arrowOffset: arrowOffset, labelHex: labelsColor.hex, labelR: labelsColor.r, labelG: labelsColor.g, labelB: labelsColor.b, labelSliderOpacity: labelsColor.sliderOpacity, labelSliderHue: labelsColor.sliderHue, onChange: _this.onChangeColorPicker, onRequestClose: _this.closeColorPicker, onAddSnapshot: onAddSnapshot }));
+            return (React__default.createElement(ColorPicker, { parentId: parentId, color: color, show: showColorPicker, direction: colorPickerDirection, arrowOffset: arrowOffset, labelHex: labelsColor.hex, labelR: labelsColor.r, labelG: labelsColor.g, labelB: labelsColor.b, labelSliderOpacity: labelsColor.sliderOpacity, labelSliderHue: labelsColor.sliderHue, onChange: _this.onChangeColorPicker, onRequestClose: _this.closeColorPicker, onAddSnapshot: onAddSnapshot }));
         };
         var colors = _this.props.colors;
         _this.state = {
@@ -31169,22 +31674,22 @@ var ColorList = /** @class */ (function (_super) {
 }(React__default.Component));
 var templateObject_1$15;
 
-var OutlinedPrimaryButton = styled__default(BaseButton)(templateObject_1$16 || (templateObject_1$16 = __makeTemplateObject(["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  height: 32px;\n"], ["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  height: 32px;\n"])), function (props) { return props.theme.button.outlinedPrimaryBackground; }, function (props) { return props.theme.button.outlinedPrimaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; });
+var OutlinedPrimaryButton = styled__default(BaseButton)(templateObject_1$16 || (templateObject_1$16 = __makeTemplateObject(["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  height: 32px;\n"], ["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  height: 32px;\n"])), function (props) { return props.theme.button.outlinedPrimaryBackground; }, function (props) { return props.theme.button.outlinedPrimaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; }, function (props) { return props.theme.measurements.fontSystem.button1.size; });
 var templateObject_1$16;
 
-var OutlinedSecondaryButton$1 = styled__default(BaseButton)(templateObject_1$17 || (templateObject_1$17 = __makeTemplateObject(["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  height: 32px;\n"], ["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  height: 32px;\n"])), function (props) { return props.theme.button.outlinedSecondaryBackground; }, function (props) { return props.theme.button.outlinedSecondaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; });
+var OutlinedSecondaryButton$1 = styled__default(BaseButton)(templateObject_1$17 || (templateObject_1$17 = __makeTemplateObject(["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  height: 32px;\n"], ["\n  width: 100%;\n  background: ", ";\n  color: ", ";\n  border: 1px solid ", ";\n  font-size: ", "px;\n  height: 32px;\n"])), function (props) { return props.theme.button.outlinedSecondaryBackground; }, function (props) { return props.theme.button.outlinedSecondaryForeground; }, function (props) { return props.theme.button.outlinedBorderColor; }, function (props) { return props.theme.measurements.fontSystem.button1.size; });
 var templateObject_1$17;
 
-var TextSecondaryButton$1 = styled__default(BaseButton)(templateObject_1$18 || (templateObject_1$18 = __makeTemplateObject(["\n  color: ", ";\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"], ["\n  color: ", ";\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"])), function (props) { return props.theme.button.textSecondaryForeground; }, function (props) { return props.theme.button.textInactiveOpacity; });
+var TextSecondaryButton$1 = styled__default(BaseButton)(templateObject_1$18 || (templateObject_1$18 = __makeTemplateObject(["\n  color: ", ";\n  font-size: ", "px;\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"], ["\n  color: ", ";\n  font-size: ", "px;\n  height: 32px;\n  span.disabled {\n    display: none;\n  }\n  &:disabled,\n  &.disabled {\n    opacity: ", ";\n  }\n"])), function (props) { return props.theme.button.textSecondaryForeground; }, function (props) { return props.theme.measurements.fontSystem.button1.size; }, function (props) { return props.theme.button.textInactiveOpacity; });
 var templateObject_1$18;
 
-var SmallCard = styled__default(BaseCard)(templateObject_1$19 || (templateObject_1$19 = __makeTemplateObject(["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  &:nth-child(3n + 1),\n  &:nth-child(3n + 2) {\n    margin-right: ", "px;\n  }\n"], ["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  &:nth-child(3n + 1),\n  &:nth-child(3n + 2) {\n    margin-right: ", "px;\n  }\n"])), function (props) { return props.theme.measurements.advancedCard.small.width; }, function (props) { return props.theme.measurements.advancedCard.small.height; }, function (props) { return props.theme.measurements.advancedSpacer; }, function (props) { return props.theme.measurements.advancedSpacer; });
+var SmallCard = styled__default(BaseCard)(templateObject_1$19 || (templateObject_1$19 = __makeTemplateObject(["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  color: ", ";\n  &:nth-child(3n + 1),\n  &:nth-child(3n + 2) {\n    margin-right: ", "px;\n  }\n"], ["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  color: ", ";\n  &:nth-child(3n + 1),\n  &:nth-child(3n + 2) {\n    margin-right: ", "px;\n  }\n"])), function (props) { return props.theme.measurements.advancedCard.small.width; }, function (props) { return props.theme.measurements.advancedCard.small.height; }, function (props) { return props.theme.measurements.advancedSpacer; }, function (props) { return props.theme.card.foreground; }, function (props) { return props.theme.measurements.advancedSpacer; });
 var templateObject_1$19;
 
-var MediumCard = styled__default(BaseCard)(templateObject_1$1a || (templateObject_1$1a = __makeTemplateObject(["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  &:nth-child(2n + 1) {\n    margin-right: ", "px;\n  }\n"], ["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  &:nth-child(2n + 1) {\n    margin-right: ", "px;\n  }\n"])), function (props) { return props.theme.measurements.advancedCard.medium.width; }, function (props) { return props.theme.measurements.advancedCard.medium.height; }, function (props) { return props.theme.measurements.advancedSpacer; }, function (props) { return props.theme.measurements.advancedSpacer; });
+var MediumCard = styled__default(BaseCard)(templateObject_1$1a || (templateObject_1$1a = __makeTemplateObject(["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  color: ", ";\n  &:nth-child(2n + 1) {\n    margin-right: ", "px;\n  }\n"], ["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  color: ", ";\n  &:nth-child(2n + 1) {\n    margin-right: ", "px;\n  }\n"])), function (props) { return props.theme.measurements.advancedCard.medium.width; }, function (props) { return props.theme.measurements.advancedCard.medium.height; }, function (props) { return props.theme.measurements.advancedSpacer; }, function (props) { return props.theme.card.foreground; }, function (props) { return props.theme.measurements.advancedSpacer; });
 var templateObject_1$1a;
 
-var LargeCard = styled__default(BaseCard)(templateObject_1$1b || (templateObject_1$1b = __makeTemplateObject(["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n"], ["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n"])), function (props) { return props.theme.measurements.advancedCard.large.width; }, function (props) { return props.theme.measurements.advancedCard.large.height; }, function (props) { return props.theme.measurements.advancedSpacer; });
+var LargeCard = styled__default(BaseCard)(templateObject_1$1b || (templateObject_1$1b = __makeTemplateObject(["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  color: ", ";\n"], ["\n  width: ", "px;\n  height: ", "px;\n  margin-bottom: ", "px;\n  color: ", ";\n"])), function (props) { return props.theme.measurements.advancedCard.large.width; }, function (props) { return props.theme.measurements.advancedCard.large.height; }, function (props) { return props.theme.measurements.advancedSpacer; }, function (props) { return props.theme.card.foreground; });
 var templateObject_1$1b;
 
 var Card = function (props) {
@@ -31451,14 +31956,19 @@ var ToolbarItem$1 = /** @class */ (function (_super) {
     function ToolbarItem(props) {
         var _this = _super.call(this, props) || this;
         _this.ref = null;
-        _this.mouseOver = function (tool) {
+        _this.updatePosition = function () {
+            var isReverse = _this.props.isReverse;
             var tooltipPosition = { x: 0, y: 0 };
             if (_this.ref.current) {
-                var _a = _this.ref.current.getBoundingClientRect(), top_1 = _a.top, height = _a.height;
+                var _a = _this.ref.current.getBoundingClientRect(), top_1 = _a.top, height = _a.height, left = _a.left, right = _a.right;
                 tooltipPosition.y = top_1 + height / 4;
-                tooltipPosition.x = 0;
+                tooltipPosition.x = isReverse ? window.innerWidth - right : left;
             }
-            _this.setState({ hoverTool: tool, tooltipPosition: tooltipPosition });
+            _this.setState({ tooltipPosition: tooltipPosition });
+        };
+        _this.mouseOver = function (tool) {
+            _this.updatePosition();
+            _this.setState({ hoverTool: tool });
         };
         _this.mouseOut = function () {
             _this.setState({ hoverTool: null });
@@ -31471,13 +31981,13 @@ var ToolbarItem$1 = /** @class */ (function (_super) {
         return _this;
     }
     ToolbarItem.prototype.componentDidMount = function () {
-        var tooltipPosition = { x: 0, y: 0 };
-        if (this.ref.current) {
-            var _a = this.ref.current.getBoundingClientRect(), top_2 = _a.top, height = _a.height;
-            tooltipPosition.y = top_2 + height / 4;
-            tooltipPosition.x = 0;
+        this.updatePosition();
+    };
+    ToolbarItem.prototype.componentDidUpdate = function (prevProps) {
+        var isReverse = this.props.isReverse;
+        if (isReverse !== prevProps.isReverse) {
+            this.updatePosition();
         }
-        this.setState({ tooltipPosition: tooltipPosition });
     };
     ToolbarItem.prototype.render = function () {
         var _this = this;
@@ -31553,7 +32063,7 @@ var ToolBarComponent = /** @class */ (function (_super) {
 var Controls = function (_a) {
     var library = _a.library, active = _a.active;
     var placeholderSearch = library.locale.controls.placeholderSearch;
-    var config = library.config;
+    var _b = library, config = _b.config, libraryProvider = _b.libraryProvider;
     var onFilesAdded = function (e) {
         var files = e.target.files;
         if (files.length) {
@@ -31586,8 +32096,9 @@ var Controls = function (_a) {
     };
     return (React__default.createElement(AdvancedUIComponents.Controlsbar, { shouldAnimateHeight: false, shoulAnimateOverflow: false },
         React__default.createElement(Components.Spacer, null),
-        React__default.createElement(Components.Input.Search, { onChange: fetchImages, placeholder: placeholderSearch }),
-        React__default.createElement(Components.Spacer, { count: 2 }),
+        libraryProvider ? (React__default.createElement(React__default.Fragment, null,
+            React__default.createElement(Components.Input.Search, { onChange: fetchImages, placeholder: placeholderSearch }),
+            React__default.createElement(Components.Spacer, { count: 2 }))) : null,
         uploadButton(),
         React__default.createElement(Components.Spacer, null),
         WebcamButton(),
@@ -31600,7 +32111,7 @@ var Div$2 = styled__default.div(templateObject_3$r || (templateObject_3$r = __ma
     ? styled.css(templateObject_1$1o || (templateObject_1$1o = __makeTemplateObject(["\n          display: block;\n        "], ["\n          display: block;\n        "]))) : styled.css(templateObject_2$H || (templateObject_2$H = __makeTemplateObject(["\n          display: flex;\n        "], ["\n          display: flex;\n        "]))));
 var Items = function (_a) {
     var active = _a.active, library = _a.library, custom = _a.custom;
-    var _b = library, query = _b.query, selectedCategoryIdentifier = _b.selectedCategoryIdentifier, categories = _b.categories;
+    var _b = library, query = _b.query, selectedCategoryIdentifier = _b.selectedCategoryIdentifier, categories = _b.categories, images = _b.images;
     var onImageClick = function (identifier) {
         active.newImage(identifier);
     };
@@ -31633,7 +32144,6 @@ var Items = function (_a) {
             }),
             React__default.createElement(Div$2, { className: isActive ? 'show' : '', key: card.identifier + "-items" }, card.items.map(renderItemCard))));
     };
-    var images = library.images;
     var noResults = library.locale.controls.noResults;
     var renderImages = function () {
         return images.length ? images.map(renderItemCard) : React__default.createElement("p", null, noResults);
@@ -31693,7 +32203,7 @@ var Items$1 = /** @class */ (function (_super) {
                 type: exports.CardType$1.MEDIUM,
                 onClick: function () { return _this.onFilterCilck(card); },
                 key: card.identifier,
-                image: card.thumbnailURI,
+                image: card.thumbnail || card.thumbnailURI,
                 label: card.name || card.name,
                 style: { animationDelay: (card.delay || 0) + "s" },
                 isActive: _this.filterTool.identifier === card.identifier,
@@ -31944,7 +32454,7 @@ var Controls$5 = function (_a) {
             React__default.createElement(Components.Input.Slider, { isDisabled: !stickerTool.isStickerSelected, name: labels.sliderOpacity, value: stickerTool.opacity, min: 0, max: 1, onChange: stickerTool.changeOpacity, onMouseUp: onRelease, onTouchEnd: onRelease }),
             React__default.createElement(Components.Spacer, { count: 2 }),
             React__default.createElement(Components.Input.Selection, { isDisabled: isDisabled, label: labels.selectColor },
-                React__default.createElement(ColorList, { activeColor: tintColor, colors: colorList, labelsColor: labelsColor, isDisabled: isDisabled, onChange: stickerTool.changeTintColor, onAddSnapshot: stickerTool.tintColorSnapshot }))),
+                React__default.createElement(ColorList, { parentId: labels.selectColor, activeColor: tintColor, colors: colorList, labelsColor: labelsColor, isDisabled: isDisabled, onChange: stickerTool.changeTintColor, onAddSnapshot: stickerTool.tintColorSnapshot }))),
         React__default.createElement(AdvancedUIComponents.ItemsSeparator, null)));
 };
 var StickerControls = inject('stickerTool')(observer(Controls$5));
@@ -32050,10 +32560,10 @@ var Controls$6 = function (_a) {
                 React__default.createElement(AdvancedUIComponents.ItemsSeparator, { full: true })),
             React__default.createElement(Components.Spacer, { count: 2 }),
             React__default.createElement(Components.Input.Selection, { isDisabled: !isTextSelected, label: labels.selectFontColor },
-                React__default.createElement(ColorList, { activeColor: textTool.activeTextColor, colors: colorList, labelsColor: labelsColor, isDisabled: !isTextSelected, onChange: textTool.changeColor, onAddSnapshot: textTool.colorSnapshot })),
+                React__default.createElement(ColorList, { parentId: labels.selectFontColor, activeColor: textTool.activeTextColor, colors: colorList, labelsColor: labelsColor, isDisabled: !isTextSelected, onChange: textTool.changeColor, onAddSnapshot: textTool.colorSnapshot })),
             React__default.createElement(Components.Spacer, { count: 2 }),
             React__default.createElement(Components.Input.Selection, { isDisabled: !isTextSelected, label: labels.selectBackgroundColor },
-                React__default.createElement(ColorList, { activeColor: textTool.activeBackgroundColor, colors: backgroundColorList, labelsColor: labelsColor, isDisabled: !isTextSelected, onChange: textTool.changeBackgroundColor, onAddSnapshot: textTool.backgroundColorSnapshot })),
+                React__default.createElement(ColorList, { parentId: labels.selectBackgroundColor, activeColor: textTool.activeBackgroundColor, colors: backgroundColorList, labelsColor: labelsColor, isDisabled: !isTextSelected, onChange: textTool.changeBackgroundColor, onAddSnapshot: textTool.backgroundColorSnapshot })),
             React__default.createElement(Components.Spacer, { count: 2 }),
             React__default.createElement(Div$5, null,
                 React__default.createElement(AdvancedUIComponents.ItemsSeparator, { full: true })),
@@ -32094,7 +32604,7 @@ var Controls$7 = function (_a) {
             React__default.createElement(AdvancedUIComponents.Button.OutlinedSecondary, { ariaLabel: labels.buttonShuffle, isDisabled: !isTextSelected, onClick: onToggleClick }, labels.buttonShuffle),
             React__default.createElement(Components.Spacer, { count: 2 }),
             React__default.createElement(Components.Input.Selection, { isDisabled: !isTextSelected, label: labels.selectColor },
-                React__default.createElement(ColorList, { activeColor: textDesignTool.activeTextColor, colors: colors, labelsColor: labelsColor, isDisabled: !isTextSelected, onChange: textDesignTool.changeColor, onAddSnapshot: textDesignTool.colorSnapshot }))),
+                React__default.createElement(ColorList, { parentId: labels.selectColor, activeColor: textDesignTool.activeTextColor, colors: colors, labelsColor: labelsColor, isDisabled: !isTextSelected, onChange: textDesignTool.changeColor, onAddSnapshot: textDesignTool.colorSnapshot }))),
         React__default.createElement(AdvancedUIComponents.ItemsSeparator, null)));
 };
 var TextControls$1 = inject('textDesignTool')(observer(Controls$7));
@@ -32184,7 +32694,7 @@ var Controls$8 = function (_a) {
             } }),
         React__default.createElement(Components.Spacer, { count: 2 }),
         React__default.createElement(Components.Input.Selection, { isDisabled: !tintable, label: labels.selectColor },
-            React__default.createElement(ColorList, { activeColor: frameTool.activeColor, colors: colorList, labelsColor: labelsColor, isDisabled: !tintable, onChange: frameTool.changeColor, onAddSnapshot: frameTool.colorSnapshot })),
+            React__default.createElement(ColorList, { parentId: labels.selectColor, activeColor: frameTool.activeColor, colors: colorList, labelsColor: labelsColor, isDisabled: !tintable, onChange: frameTool.changeColor, onAddSnapshot: frameTool.colorSnapshot })),
         React__default.createElement(AdvancedUIComponents.ItemsSeparator, null)));
 };
 var FrameControls = inject('frameTool')(observer(Controls$8));
@@ -32209,7 +32719,7 @@ var Controls$9 = function (_a) {
             React__default.createElement(AdvancedUIComponents.ItemsSeparator, null)),
         React__default.createElement(AdvancedUIComponents.Controlsbar, { overflowAfterExpand: true },
             React__default.createElement(Components.Input.Selection, { label: brushControlLocale.selectColor },
-                React__default.createElement(ColorList, { activeColor: brushTool.activeColor, colors: colorList, labelsColor: labelsColor, onChange: brushTool.changeColor })),
+                React__default.createElement(ColorList, { parentId: brushControlLocale.selectColor, activeColor: brushTool.activeColor, colors: colorList, labelsColor: labelsColor, onChange: brushTool.changeColor })),
             React__default.createElement(Components.Spacer, { count: 2 }),
             React__default.createElement(Components.Input.Slider, { name: brushControlLocale.sliderSize, value: brushTool.size, min: 1, max: 100, divider: 1, onChange: brushTool.changeSize }),
             React__default.createElement(Components.Spacer, { count: 3 }),
@@ -32246,40 +32756,42 @@ var Controls$a = function (_a) {
 };
 var TransformControls = inject('transformTool')(observer(Controls$a));
 
-var Container$5 = styled__default.div(templateObject_1$1t || (templateObject_1$1t = __makeTemplateObject(["\n  svg {\n    width: ", "px;\n    height: ", "px;\n    &.common-crop-thumbnail {\n      width: ", "px;\n      height: ", "px;\n      margin-bottom: 13px;\n    }\n  }\n"], ["\n  svg {\n    width: ", "px;\n    height: ", "px;\n    &.common-crop-thumbnail {\n      width: ", "px;\n      height: ", "px;\n      margin-bottom: 13px;\n    }\n  }\n"])), function (props) { return props.theme.measurements.advancedCard.medium.width; }, function (props) { return props.theme.measurements.advancedCard.medium.height; }, function (props) { return props.theme.measurements.advancedCard.medium.width - 36; }, function (props) { return props.theme.measurements.advancedCard.medium.height - 36; });
 var Items$8 = function (_a) {
     var transformTool = _a.transformTool, custom = _a.custom, editor = _a.editor;
     var _b = transformTool, categories = _b.categories, allItems = _b.items, identifier = _b.identifier, config = _b.config;
     var renderItems = function (option) {
         var isActive = option.identifier === identifier;
-        var theme = editor.configStore.theme;
-        if (option.thumbnailURI === 'assets/transform') {
+        var _a = editor.configStore, theme = _a.theme, measurements = _a.measurements;
+        if (option.thumbnailURI && transformTool.checkImage(option.thumbnailURI)) {
             return custom.getAdvancedOptionCard({
                 tool: exports.Tool.TRANSFORM,
                 type: exports.CardType$1.MEDIUM,
                 isActive: isActive,
                 onClick: function () { return transformTool.changeIdentifier(option.identifier, true); },
                 key: option.identifier,
-                style: { animationDelay: (option.delay || 0) + "s" },
-                image: '',
+                style: { backgroundSize: '80%', animationDelay: (option.delay || 0) + "s" },
+                image: option.thumbnailURI,
                 label: option.name || option.name,
-                children: (React__default.createElement(Container$5, null,
-                    React__default.createElement(TransformIcons.crops[option.identifier], {
-                        main: theme.transform.crops.main,
-                        highlight: theme.transform.crops.highlight,
-                        shadow: theme.transform.crops.shadow,
-                    }),
-                    React__default.createElement(AdvancedUIComponents.CardLabel, null, option.name))),
+                children: React__default.createElement(AdvancedUIComponents.CardLabel, null, option.name),
             });
         }
+        var isCommonCrop = option.identifier.includes('imgly_transform_common');
+        var cropImage = TransformIcons.crops[option.identifier] || TransformIcons.crops.imgly_transform_common_custom;
+        var Component = React__default.createElement(cropImage, {
+            width: measurements.advancedCard.medium.width - (isCommonCrop ? 42 : 0) + "px",
+            height: measurements.advancedCard.medium.height - (isCommonCrop ? 42 : 0) + "px",
+            main: theme.transform.crops.main,
+            highlight: theme.transform.crops.highlight,
+            shadow: theme.transform.crops.shadow,
+        });
         return custom.getAdvancedOptionCard({
             tool: exports.Tool.TRANSFORM,
             type: exports.CardType$1.MEDIUM,
             isActive: isActive,
             onClick: function () { return transformTool.changeIdentifier(option.identifier, true); },
             key: option.identifier,
-            style: { backgroundSize: '80%', animationDelay: (option.delay || 0) + "s" },
-            image: option.thumbnailURI,
+            style: { animationDelay: (option.delay || 0) + "s", backgroundSize: 'unset' },
+            image: "'data:image/svg+xml," + encodeURIComponent(server.renderToStaticMarkup(Component)) + "'",
             label: option.name || option.name,
             children: React__default.createElement(AdvancedUIComponents.CardLabel, null, option.name),
         });
@@ -32300,7 +32812,6 @@ var Items$8 = function (_a) {
         getItems(categories.filter(function (t) { return !t.items; }))))));
 };
 var TransformItems = inject('transformTool', 'custom', 'editor')(observer(Items$8));
-var templateObject_1$1t;
 
 var TransformOptionsBar = function (_a) {
     var transformTool = _a.transformTool;
@@ -32350,30 +32861,45 @@ var ToolOptionsBarComponent = /** @class */ (function (_super) {
     return ToolOptionsBarComponent;
 }(React__default.Component));
 
-var Disable = styled__default.div(templateObject_1$1u || (templateObject_1$1u = __makeTemplateObject(["\n  position: absolute;\n  height: 100%;\n  width: ", "px;\n  top: 0;\n  background: ", ";\n  z-index: ", ";\n"], ["\n  position: absolute;\n  height: 100%;\n  width: ",
+var Disable = styled__default.div(templateObject_1$1t || (templateObject_1$1t = __makeTemplateObject(["\n  position: absolute;\n  height: 100%;\n  width: ", "px;\n  top: 0;\n  background: ", ";\n  z-index: ", ";\n"], ["\n  position: absolute;\n  height: 100%;\n  width: ",
     "px;\n  top: 0;\n  background: ", ";\n  z-index: ", ";\n"])), function (props) {
     return props.theme.measurements.advancedUIToolbar.width + props.theme.measurements.advancedToolControlBar.width;
 }, function (props) { return props.theme.webcam.backdrop; }, function (props) { return props.theme.measurements.zIndex.disable; });
-var Advanced = function (_a) {
-    var config = _a.config, active = _a.active;
-    return config.isOrderDefault ? (React__default.createElement(Components.Container, null,
-        active.isWebcam ? React__default.createElement(Disable, { style: { left: 0 } }) : null,
-        React__default.createElement(Modal$1, null),
-        React__default.createElement(ToolBarComponent, null),
-        React__default.createElement(ToolOptionsBarComponent, null),
-        React__default.createElement(CanvasArea, null,
-            React__default.createElement(CanvasBar$2, null),
-            React__default.createElement(CanvasContainer$1, null)))) : (React__default.createElement(Components.Container, null,
-        active.isWebcam ? React__default.createElement(Disable, { style: { right: 0 } }) : null,
-        React__default.createElement(Modal$1, null),
-        React__default.createElement(CanvasArea, null,
-            React__default.createElement(CanvasBar$2, null),
-            React__default.createElement(CanvasContainer$1, null)),
-        React__default.createElement(ToolOptionsBarComponent, null),
-        React__default.createElement(ToolBarComponent, null)));
-};
+var Advanced = /** @class */ (function (_super) {
+    __extends(Advanced, _super);
+    function Advanced() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.state = { hasError: false };
+        return _this;
+    }
+    Advanced.getDerivedStateFromError = function (error) {
+        // eslint-disable-next-line no-console
+        console.error(error);
+        // Update state so the next render will show the fallback UI.
+        return { hasError: true };
+    };
+    Advanced.prototype.render = function () {
+        var _a = this.props, config = _a.config, active = _a.active;
+        return config.isOrderDefault ? (React__default.createElement(Components.Container, null,
+            active.isWebcam ? React__default.createElement(Disable, { style: { left: 0 } }) : null,
+            React__default.createElement(Modal$1, null),
+            React__default.createElement(ToolBarComponent, null),
+            React__default.createElement(ToolOptionsBarComponent, null),
+            React__default.createElement(CanvasArea, null,
+                React__default.createElement(CanvasBar$2, null),
+                React__default.createElement(CanvasContainer$1, null)))) : (React__default.createElement(Components.Container, null,
+            active.isWebcam ? React__default.createElement(Disable, { style: { right: 0 } }) : null,
+            React__default.createElement(Modal$1, null),
+            React__default.createElement(CanvasArea, null,
+                React__default.createElement(CanvasBar$2, null),
+                React__default.createElement(CanvasContainer$1, null)),
+            React__default.createElement(ToolOptionsBarComponent, null),
+            React__default.createElement(ToolBarComponent, null)));
+    };
+    return Advanced;
+}(React__default.Component));
 var Layout = inject('config', 'active')(observer(Advanced));
-var templateObject_1$1u;
+var templateObject_1$1t;
 
 var AdvancedUI = /** @class */ (function (_super) {
     __extends(AdvancedUI, _super);

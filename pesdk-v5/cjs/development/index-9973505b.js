@@ -1,11 +1,14 @@
-import { _ as __assign, n as FocusIdentifier, J as Vector2, I as ImageFormat, K as uuid, T as Tool, M as __spread } from './index-72ef5294.js';
-import 'react';
-import 'react-dom';
-import './engine.development.js';
-import 'styled-components';
+'use strict';
+
+var index = require('./index-e2784d43.js');
+require('react');
+require('react-dom');
+require('./engine.development.js');
+require('styled-components');
+require('react-dom/server');
 
 var name = "photoeditorsdk";
-var version = "5.0.0";
+var version = "5.1.0";
 var description = "The most comprehensive photo editor SDK for HTML5";
 var repository = "http://github.com/imgly/pesdk-html5";
 var author = "PhotoEditorSDK (img.ly GmbH) <contact@img.ly>";
@@ -140,7 +143,7 @@ var pkg = {
 };
 
 var Data64 = function (type) {
-    if (type === void 0) { type = ImageFormat.PNG; }
+    if (type === void 0) { type = index.ImageFormat.PNG; }
     return "data:" + type + ";base64,";
 };
 var Serializer = /** @class */ (function () {
@@ -157,25 +160,25 @@ var Serializer = /** @class */ (function () {
         };
         /** returns preview point relative to preview image dimensions */
         this.previewRelativeToImageDimensions = function (point) {
-            return _this.relativeToOutputContainer(point).divide(Vector2.fromSize(_this.previewSize));
+            return _this.relativeToOutputContainer(point).divide(index.Vector2.fromSize(_this.previewSize));
         };
         /**
          * returns point relative to preview container
          */
         this.relativeToOutputContainer = function (point) {
-            return new Vector2(point).subtract(new Vector2(_this.previewPosition));
+            return new index.Vector2(point).subtract(new index.Vector2(_this.previewPosition));
         };
         /**
          * returns point relative to preview image dimensions
          */
         this.relativeToImageDimensions = function (point) {
-            return new Vector2(point).divide(Vector2.fromSize(_this.previewSize));
+            return new index.Vector2(point).divide(index.Vector2.fromSize(_this.previewSize));
         };
         /**
          * returns point relative to uncropped image dimensions
          */
         this.relativeToUntransformedImageDimensions = function (point) {
-            return new Vector2(point).divide(Vector2.fromSize(_this.untransformedImageSize));
+            return new index.Vector2(point).divide(index.Vector2.fromSize(_this.untransformedImageSize));
         };
         /** returns a value relative to shortest uncropped image side */
         this.relativeToShortestImageEdge = function (value) {
@@ -366,7 +369,7 @@ var Serializer = /** @class */ (function () {
         }
         var stickers = appState.customStickers
             ? appState.customStickers.map(function (c) {
-                return __assign({}, c, { raster: __assign({}, c.raster, { data: c.raster.data.replace(Data64(c.raster.type), '') }) });
+                return index.__assign({}, c, { raster: index.__assign({}, c.raster, { data: c.raster.data.replace(Data64(c.raster.type), '') }) });
             })
             : [];
         var assetLibrary = {
@@ -402,7 +405,7 @@ var Serializer = /** @class */ (function () {
     Serializer.prototype.serialzeFocus = function (focus) {
         var hypotenuse = Math.sqrt(Math.pow(this.previewSize.width, 2) + Math.pow(this.previewSize.height, 2));
         switch (focus.identifier) {
-            case FocusIdentifier.LINEAR:
+            case index.FocusIdentifier.LINEAR:
                 return {
                     type: 'focus',
                     options: {
@@ -414,7 +417,7 @@ var Serializer = /** @class */ (function () {
                         },
                     },
                 };
-            case FocusIdentifier.RADIAL:
+            case index.FocusIdentifier.RADIAL:
                 return {
                     type: 'focus',
                     options: {
@@ -427,7 +430,7 @@ var Serializer = /** @class */ (function () {
                         },
                     },
                 };
-            case FocusIdentifier.MIRRORED:
+            case index.FocusIdentifier.MIRRORED:
                 // eslint-disable-next-line no-case-declarations
                 var mirrored = focus.mirrored;
                 return {
@@ -532,8 +535,8 @@ var Serializer = /** @class */ (function () {
      */
     Serializer.prototype.serializeTransform = function (state) {
         var previewSize = this.getUnRotatedPreviewSize(state.outputRotation);
-        var start = new Vector2(state.start).divide(Vector2.fromSize(previewSize));
-        var end = new Vector2(state.end).divide(Vector2.fromSize(previewSize));
+        var start = new index.Vector2(state.start).divide(index.Vector2.fromSize(previewSize));
+        var end = new index.Vector2(state.end).divide(index.Vector2.fromSize(previewSize));
         var transform = {
             type: 'transform',
             options: {
@@ -569,7 +572,7 @@ var Serializer = /** @class */ (function () {
 }());
 
 var Data64$1 = function (type) {
-    if (type === void 0) { type = ImageFormat.PNG; }
+    if (type === void 0) { type = index.ImageFormat.PNG; }
     return "data:" + type + ";base64,";
 };
 var Deserializer = /** @class */ (function () {
@@ -587,25 +590,25 @@ var Deserializer = /** @class */ (function () {
         };
         /** returns point relative to preview image dimensions */
         this.previewRelativeToImageDimensions = function (point) {
-            return _this.relativeToOutputContainer(new Vector2(point).multiply(Vector2.fromSize(_this.previewSize)));
+            return _this.relativeToOutputContainer(new index.Vector2(point).multiply(index.Vector2.fromSize(_this.previewSize)));
         };
         /**
          * returns point relative to preview container position
          */
         this.relativeToOutputContainer = function (point) {
-            return new Vector2(point).add(new Vector2(_this.previewPosition));
+            return new index.Vector2(point).add(new index.Vector2(_this.previewPosition));
         };
         /**
          * returns point relative to preview image dimensions
          */
         this.relativeToImageDimensions = function (point) {
-            return new Vector2(point).multiply(Vector2.fromSize(_this.previewSize));
+            return new index.Vector2(point).multiply(index.Vector2.fromSize(_this.previewSize));
         };
         /**
          * returns point relative to image dimensions
          */
         this.relativeToUntransformedImageDimensions = function (point) {
-            return new Vector2(point).multiply(Vector2.fromSize(_this.untransformedImageSize));
+            return new index.Vector2(point).multiply(index.Vector2.fromSize(_this.untransformedImageSize));
         };
         // relative to shortest edge of noncropped image dimensions
         this.relativeToShortestImageEdge = function (value) {
@@ -631,7 +634,7 @@ var Deserializer = /** @class */ (function () {
      * @param adjustment
      */
     Deserializer.deserializeAdjustments = function (adjustment) {
-        return __assign({}, adjustment);
+        return index.__assign({}, adjustment);
     };
     /**
      * Deserializes overlay operation
@@ -746,8 +749,8 @@ var Deserializer = /** @class */ (function () {
                             appState_1.transform = Deserializer.initializeEmptyOrientation();
                         }
                         /* eslint-disable no-case-declarations */
-                        var start = new Vector2(operation.options.start).multiply(Vector2.fromSize(_this.previewSize));
-                        var end = new Vector2(operation.options.end).multiply(Vector2.fromSize(_this.previewSize));
+                        var start = new index.Vector2(operation.options.start).multiply(index.Vector2.fromSize(_this.previewSize));
+                        var end = new index.Vector2(operation.options.end).multiply(index.Vector2.fromSize(_this.previewSize));
                         /* eslint-enable no-case-declarations */
                         appState_1.transform.start = start;
                         appState_1.transform.end = end;
@@ -779,7 +782,7 @@ var Deserializer = /** @class */ (function () {
                                         appState_1.brush = _this.deserializeBrush(sprite.options);
                                     }
                                     else {
-                                        (_a = appState_1.brush.strokes).push.apply(_a, __spread(_this.deserializeBrush(sprite.options).strokes));
+                                        (_a = appState_1.brush.strokes).push.apply(_a, index.__spread(_this.deserializeBrush(sprite.options).strokes));
                                     }
                                     break;
                                 case 'sticker':
@@ -795,30 +798,30 @@ var Deserializer = /** @class */ (function () {
                                         };
                                     }
                                     // eslint-disable-next-line no-case-declarations
-                                    var id = uuid();
+                                    var id = index.uuid();
                                     appState_1.sprite.spriteIdList.push(id);
                                     appState_1.sprite.common[id] = {
                                         order: _this.spriteOrder,
                                         position: _this.relativeToUntransformedImageDimensions(sprite.options.position),
-                                        tool: Tool.STICKER,
+                                        tool: index.Tool.STICKER,
                                         rotation: sprite.options.rotation || 0,
                                         flipHorizontally: sprite.options.flipHorizontally,
                                         flipVertically: sprite.options.flipVertically,
                                     };
                                     _this.spriteOrder += 1;
-                                    if (sprite.type === Tool.STICKER) {
+                                    if (sprite.type === index.Tool.STICKER) {
                                         appState_1.sprite.common[id].size = {
                                             width: _this.relativeToShortestImageEdge(sprite.options.dimensions.x),
                                             height: _this.relativeToShortestImageEdge(sprite.options.dimensions.y),
                                         };
                                         appState_1.sprite.sticker[id] = Deserializer.deserializeStickers(sprite.options);
                                     }
-                                    else if (sprite.type === Tool.TEXT) {
-                                        appState_1.sprite.common[id].tool = Tool.TEXT;
+                                    else if (sprite.type === index.Tool.TEXT) {
+                                        appState_1.sprite.common[id].tool = index.Tool.TEXT;
                                         appState_1.sprite.text[id] = _this.deserializeTexts(sprite.options);
                                     }
-                                    else if (sprite.type === Tool.TEXT_DESIGN) {
-                                        appState_1.sprite.common[id].tool = Tool.TEXT_DESIGN;
+                                    else if (sprite.type === index.Tool.TEXT_DESIGN) {
+                                        appState_1.sprite.common[id].tool = index.Tool.TEXT_DESIGN;
                                         appState_1.sprite.textdesign[id] = _this.deserializeTextDesign(sprite.options);
                                     }
                                     break;
@@ -832,7 +835,7 @@ var Deserializer = /** @class */ (function () {
                     (state.assetLibrary && state.assetLibrary.assets && state.assetLibrary.assets.stickers) || [];
                 appState_1.customStickers = appState_1.customStickers.map(function (c) {
                     var img = c.raster.data.replace(Data64$1(c.raster.type), '');
-                    return __assign({}, c, { raster: __assign({}, c.raster, { data: Data64$1(c.raster.type) + img }) });
+                    return index.__assign({}, c, { raster: index.__assign({}, c.raster, { data: Data64$1(c.raster.type) + img }) });
                 });
             }
             return appState_1;
@@ -979,4 +982,5 @@ var Deserializer = /** @class */ (function () {
     return Deserializer;
 }());
 
-export { Deserializer, Serializer };
+exports.Deserializer = Deserializer;
+exports.Serializer = Serializer;
